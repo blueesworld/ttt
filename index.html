@@ -3,904 +3,2501 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SIE BEOBACHTET DICH</title>
+<title>FLÜSTERN AUS DER DUNKELHEIT</title>
 <style>
-  :root{ --red:#b0141a; --red-bright:#ff1a1a; --black:#050505; --green:#2fff6a; }
-  *{margin:0;padding:0;box-sizing:border-box;}
-  html,body{ width:100%;height:100%;background:var(--black);color:#eee;font-family:'Courier New', monospace;overflow:hidden; }
-  #app{ position:relative;width:100vw;height:100vh;display:flex;align-items:center;justify-content:center; }
+  @import url('https://fonts.googleapis.com/css2?family=Creepster&family=Special+Elite&display=swap');
 
-  .screen{
-    position:absolute; inset:0; display:flex; flex-direction:column;
-    align-items:center; justify-content:center; gap:18px; text-align:center; padding:24px;
-    opacity:0; pointer-events:none; transition:opacity 1.1s ease;
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --blood: #8b0000;
+    --dark: #050505;
+    --fog: rgba(10,10,10,0.95);
+    --green: #00ff41;
+    --red: #ff0000;
   }
-  .screen.active{opacity:1;pointer-events:all;}
 
-  h1{ font-size:clamp(24px,6vw,50px); letter-spacing:4px; color:var(--red-bright);
-    text-shadow:0 0 20px var(--red), 0 0 40px var(--red); animation:flicker 3.5s infinite; }
-  h2.sub{font-size:clamp(16px,3vw,22px);color:#e88;letter-spacing:2px;}
-  p{font-size:clamp(13px,2.1vw,17px);color:#ccc;max-width:580px;line-height:1.55;}
-  small{color:#777;font-size:12px;}
-  @keyframes flicker{0%,19%,21%,23%,25%,54%,56%,100%{opacity:1;}20%,24%,55%{opacity:0.4;}}
-
-  button{ background:transparent; border:2px solid var(--red); color:var(--red-bright);
-    font-family:inherit; font-size:16px; letter-spacing:2px; padding:14px 32px; cursor:pointer; transition:.25s; text-transform:uppercase; }
-  button:hover{ background:var(--red); color:#000; box-shadow:0 0 25px var(--red); }
-  button:disabled{opacity:.3;cursor:not-allowed;}
-  button.small{padding:9px 18px;font-size:12px;}
-
-  #consentBox{ border:1px solid #333; background:rgba(20,0,0,.4); padding:16px 20px; max-width:600px;
-    font-size:12px; color:#999; line-height:1.6; text-align:left; max-height:38vh; overflow-y:auto; }
-  #consentBox strong{color:#c88;}
-  #optionsRow{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;max-width:420px;}
-  .toggleBtn{ border:1px solid #555;color:#aaa;background:transparent;padding:8px 14px;font-size:11px;letter-spacing:1px;cursor:pointer; }
-  .toggleBtn.on{border-color:var(--red-bright);color:var(--red-bright);}
-
-  /* ===== CONNECT SCREEN ===== */
-  #connectScreen{ gap:26px; }
-  #netGraph{ position:relative; width:min(520px,90vw); height:min(340px,46vh); }
-  .netNode{ position:absolute; width:60px;height:60px;border-radius:50%; display:flex;align-items:center;justify-content:center;
-    border:2px solid #444; background:#0a0a0a; opacity:0; transform:scale(.5);
-    transition:opacity .5s, transform .5s, border-color .5s; font-size:10px; color:#888; text-align:center; overflow:visible; }
-  .netNode.show{opacity:1;transform:scale(1);}
-  .netNode.center{ left:50%; top:50%; transform:translate(-50%,-50%) scale(1); width:74px;height:74px; border-color:var(--red); }
-  .netNode svg{width:60%;height:60%;}
-  .netLine{ position:absolute; height:2px; background:linear-gradient(90deg, var(--red), transparent);
-    transform-origin:left center; opacity:0; transition:opacity .4s; }
-  .netLine.show{opacity:.7;}
-  #connectStatus{font-size:13px;color:#e66;letter-spacing:2px;min-height:20px;}
-
-  /* ===== GAME SCREEN ===== */
-  #gameScreen{inset:0;padding:0;}
-  #camWrap{ position:relative; width:100vw; height:100vh; overflow:hidden; background:#000; }
-  video{ position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
-    filter:grayscale(0.35) contrast(1.25) brightness(0.55) saturate(1.1); transform:scaleX(-1); }
-  canvas#fx{ position:absolute;inset:0;width:100%;height:100%;mix-blend-mode:overlay;pointer-events:none; }
-  canvas#faceCanvas{ position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:4; }
-  #vignette{ position:absolute;inset:0;pointer-events:none;
-    background:radial-gradient(ellipse at center, rgba(0,0,0,0) 35%, rgba(0,0,0,0.85) 100%); }
-  #scanlines{ position:absolute;inset:0;pointer-events:none;
-    background:repeating-linear-gradient(to bottom, rgba(0,0,0,0.15) 0px, rgba(0,0,0,0.15) 1px, transparent 2px, transparent 3px);
-    mix-blend-mode:multiply;opacity:.6; }
-  #noise{ position:absolute;inset:0;pointer-events:none;opacity:0;
-    background-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnPjxmaWx0ZXIgaWQ9J24nPjxmZVR1cmJ1bGVuY2UgdHlwZT0nZnJhY3RhbE5vaXNlJyBiYXNlRnJlcXVlbmN5PScwLjknIG51bU9jdGF2ZXM9JzInIHN0aXRjaFRpbGVzPSdzdGl0Y2gnLz48L2ZpbHRlcj48cmVjdCB3aWR0aD0nMTAwJScgaGVpZ2h0PScxMDAlJyBmaWx0ZXI9J3VybCgjbiknIG9wYWNpdHk9JzAuNCcvPjwvc3ZnPg==");
-    background-size:180px 180px; animation:noiseMove .2s steps(2) infinite; }
-  @keyframes noiseMove{0%{transform:translate(0,0);}100%{transform:translate(-8px,4px);}}
-  .noiseSpike{opacity:.85 !important;}
-
-  #hudTop{ position:absolute;top:14px;left:14px;right:14px;display:flex;justify-content:space-between;
-    font-size:12px;letter-spacing:2px;color:#e33;text-shadow:0 0 6px #900;z-index:7; }
-  #hudTop span.dot{ display:inline-block;width:8px;height:8px;border-radius:50%;background:#e33;margin-right:6px;
-    animation:pulse 1s infinite; box-shadow:0 0 8px #e33; }
-  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.2;}}
-
-  #status{ position:absolute;bottom:140px;left:0;right:0;text-align:center;z-index:5;
-    font-size:14px;letter-spacing:1.5px;color:#eee;text-shadow:0 0 10px #000, 0 0 4px #900; min-height:22px;padding:0 20px; }
-
-  #micUI{ position:absolute;bottom:26px;left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:8px;z-index:6; }
-  #micIndicator{ display:none;align-items:center;gap:8px;font-size:11px;letter-spacing:2px;color:#f66; }
-  #micIndicator.active{display:flex;}
-  #micDot{ width:10px;height:10px;border-radius:50%;background:#f00;animation:pulse .5s infinite;box-shadow:0 0 10px #f00; }
-  #transcript{ font-size:12px;color:#999;min-height:16px;max-width:80vw;text-align:center; }
-
-  #meterWrap{ position:absolute;top:46px;left:14px;z-index:7;width:140px; }
-  #meterLabel{font-size:10px;color:#e33;letter-spacing:2px;margin-bottom:4px;}
-  #meterBar{ width:100%;height:6px;background:#200;border:1px solid #500;overflow:hidden; }
-  #meterFill{ height:100%;width:0%;background:linear-gradient(90deg,#500,#f00);transition:width 1s linear;box-shadow:0 0 10px #f00; }
-
-  #faceLabel{ position:absolute; z-index:5; font-size:10px; letter-spacing:1px; color:var(--green);
-    text-shadow:0 0 6px #0f0; opacity:0; transition:opacity .3s; pointer-events:none; }
-  #faceLabel.show{opacity:1;}
-
-  /* ===== CALL STRIP (4 contact camera tiles) ===== */
-  #callStrip{ position:absolute; top:78px; right:12px; z-index:7; display:flex; flex-direction:column; gap:8px; width:132px; }
-  .camTile{ position:relative; width:132px; height:96px; border:1.5px solid #500; background:#000; overflow:hidden; transition:.3s; }
-  .camTile canvas{ width:100%;height:100%;display:block; }
-  .camTile .tileLabel{ position:absolute; bottom:2px; left:4px; font-size:9px; color:#ddd; text-shadow:0 0 4px #000; z-index:2; }
-  .camTile .tileStatus{ position:absolute; top:2px; right:4px; font-size:8px; color:#4f8; text-shadow:0 0 4px #000; z-index:2; }
-  .camTile .caption{
-    position:absolute; left:0; right:0; bottom:14px; text-align:center; font-size:8.5px; color:#fff;
-    background:rgba(0,0,0,.55); padding:2px 3px; opacity:0; transition:opacity .3s; z-index:3; line-height:1.2;
+  body {
+    background: #000;
+    color: #fff;
+    font-family: 'Special Elite', cursive;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
   }
-  .camTile .caption.show{opacity:1;}
-  .camTile.speaking{ border-color:var(--green); box-shadow:0 0 12px rgba(47,255,106,0.6); }
-  .camTile.speaking .tileStatus{color:var(--green);}
-  .camTile.offline .tileStatus{color:#888;}
-  .camTile.corrupt{ border-color:#e93; }
-  .camTile.corrupt .tileStatus{color:#e93;}
-  .camTile.gone{ border-color:var(--red-bright); }
-  .camTile.gone .tileStatus{color:var(--red-bright);}
-  .camTile.gone .tileLabel{ text-decoration:line-through; color:#844; }
-  .recDot{ position:absolute; top:3px; left:4px; width:5px;height:5px;border-radius:50%;background:#f00;z-index:2;
-    animation:pulse .8s infinite; box-shadow:0 0 4px #f00; }
 
-  #dataPanel{ position:absolute;z-index:8;top:50%;left:50%;transform:translate(-50%,-50%);
-    background:rgba(5,0,0,.9);border:1px solid var(--red);padding:22px 26px;width:min(460px,88vw);
-    opacity:0;transition:opacity .6s;box-shadow:0 0 40px rgba(255,0,0,.3); }
-  #dataPanel.show{opacity:1;}
-  #dataPanel h3{color:var(--red-bright);font-size:14px;letter-spacing:3px;margin-bottom:14px;text-transform:uppercase;}
-  #dataLines{font-size:11.5px;color:#c99;line-height:1.9;text-align:left;min-height:60px;}
-  #dataLines .lbl{color:#888;}
-  .cursor{display:inline-block;width:7px;background:#f00;animation:blink 1s steps(1) infinite;}
-  @keyframes blink{50%{opacity:0;}}
+  /* BLOOD DRIP ANIMATION */
+  @keyframes drip {
+    0% { height: 0; opacity: 1; }
+    70% { height: 120px; opacity: 1; }
+    100% { height: 130px; opacity: 0; }
+  }
+  @keyframes flicker {
+    0%,19%,21%,23%,25%,54%,56%,100% { opacity: 1; }
+    20%,22%,24%,55% { opacity: 0.3; }
+  }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    10%,30%,50%,70%,90% { transform: translateX(-5px); }
+    20%,40%,60%,80% { transform: translateX(5px); }
+  }
+  @keyframes float {
+    0%,100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+  }
+  @keyframes pulse-red {
+    0%,100% { box-shadow: 0 0 5px #f00, 0 0 10px #f00; }
+    50% { box-shadow: 0 0 20px #f00, 0 0 40px #f00, 0 0 60px #f00; }
+  }
+  @keyframes ghost-float {
+    0%,100% { transform: translate(0,0) rotate(0deg); opacity: 0.7; }
+    25% { transform: translate(30px,-20px) rotate(5deg); opacity: 0.4; }
+    50% { transform: translate(-20px,-40px) rotate(-5deg); opacity: 0.8; }
+    75% { transform: translate(10px,-10px) rotate(3deg); opacity: 0.5; }
+  }
+  @keyframes eye-glow {
+    0%,100% { filter: drop-shadow(0 0 5px #f00); }
+    50% { filter: drop-shadow(0 0 20px #f00) drop-shadow(0 0 40px #ff6600); }
+  }
+  @keyframes scan-line {
+    0% { top: -10%; }
+    100% { top: 110%; }
+  }
+  @keyframes vhs-glitch {
+    0%,100% { clip-path: inset(0 0 0 0); transform: none; }
+    5% { clip-path: inset(20% 0 60% 0); transform: translateX(-5px); }
+    10% { clip-path: inset(60% 0 10% 0); transform: translateX(5px); }
+    15% { clip-path: inset(0 0 0 0); transform: none; }
+  }
+  @keyframes blood-spread {
+    0% { transform: scale(0); opacity: 1; }
+    100% { transform: scale(3); opacity: 0; }
+  }
+  @keyframes creep-in {
+    0% { transform: scale(0.5); opacity: 0; filter: blur(20px); }
+    100% { transform: scale(1); opacity: 1; filter: blur(0); }
+  }
+  @keyframes rotate-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  @keyframes heartbeat {
+    0%,100% { transform: scale(1); }
+    14% { transform: scale(1.1); }
+    28% { transform: scale(1); }
+    42% { transform: scale(1.05); }
+    70% { transform: scale(1); }
+  }
 
-  .ghostFace{ position:absolute;z-index:6;pointer-events:none;opacity:0;
-    filter:contrast(1.4) brightness(0.7) saturate(0);mix-blend-mode:screen; }
+  /* PARTICLES */
+  .particles { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+  .particle {
+    position: absolute;
+    width: 3px; height: 3px;
+    background: #8b0000;
+    border-radius: 50%;
+    animation: float 3s ease-in-out infinite;
+  }
 
-  #finalMsg{ position:absolute;inset:0;z-index:9;background:#000;display:flex;align-items:center;justify-content:center;
-    flex-direction:column;gap:14px;opacity:0;pointer-events:none;transition:opacity .4s;text-align:center;padding:20px; }
-  #finalMsg.show{opacity:1;pointer-events:all;}
-  #finalMsg h2{ font-size:clamp(22px,7vw,42px);color:var(--red-bright);text-shadow:0 0 30px red;letter-spacing:3px; }
-  #finalContacts{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:6px;}
-  #finalContacts .avatar{width:44px;height:44px;border-radius:50%;overflow:hidden;border:1px solid var(--red-bright);filter:grayscale(1) brightness(.35);}
-  #finalContacts .avatar svg{width:100%;height:100%;}
+  /* SCANLINES OVERLAY */
+  .scanlines {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,0.1) 0px, rgba(0,0,0,0.1) 1px, transparent 1px, transparent 2px);
+    pointer-events: none; z-index: 9998;
+  }
+  .scan-line {
+    position: fixed; left: 0; width: 100%; height: 3px;
+    background: rgba(0,255,65,0.15);
+    animation: scan-line 4s linear infinite;
+    pointer-events: none; z-index: 9999;
+  }
 
-  .flash{ position:absolute;inset:0;background:#fff;z-index:10;opacity:0;pointer-events:none; }
-  .shakeAnim{animation:shakeKF .35s linear;}
-  @keyframes shakeKF{0%{transform:translate(0,0);}20%{transform:translate(-8px,4px);}40%{transform:translate(7px,-6px);}
-    60%{transform:translate(-6px,-3px);}80%{transform:translate(5px,5px);}100%{transform:translate(0,0);}}
+  /* VIGNETTE */
+  .vignette {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.9) 100%);
+    pointer-events: none; z-index: 9997;
+  }
 
-  footer{ position:fixed;bottom:6px;right:10px;font-size:10px;color:#444;z-index:20; }
+  /* BLOOD DROPS */
+  .blood-container {
+    position: fixed; top: 0; left: 0; width: 100%; pointer-events: none; z-index: 9996;
+    display: flex; justify-content: space-around;
+  }
+  .blood-drop {
+    width: 8px; background: linear-gradient(to bottom, #8b0000, #ff0000);
+    border-radius: 0 0 50% 50%;
+    animation: drip 3s ease-in infinite;
+    animation-delay: var(--delay);
+  }
 
-  @media (max-width:520px){
-    #callStrip{ top:auto; bottom:170px; right:8px; flex-direction:row; width:auto; max-width:calc(100vw - 16px); flex-wrap:wrap; justify-content:flex-end; }
-    .camTile{ width:74px; height:56px; }
-    .camTile .caption{ font-size:7px; bottom:12px; }
-    #status{ bottom:120px; }
+  /* ===== SCREENS ===== */
+  .screen {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    display: none; z-index: 100;
+  }
+  .screen.active { display: flex; }
+
+  /* LOADING SCREEN */
+  #loading-screen {
+    background: #000;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    animation: creep-in 1s ease-out;
+  }
+  .loading-skull {
+    font-size: 8rem;
+    animation: float 2s ease-in-out infinite, eye-glow 1s ease-in-out infinite;
+  }
+  .loading-bar-container {
+    width: 300px; height: 20px;
+    border: 2px solid #8b0000;
+    margin-top: 30px;
+    box-shadow: 0 0 10px #8b0000;
+  }
+  .loading-bar {
+    height: 100%; width: 0;
+    background: linear-gradient(to right, #8b0000, #ff0000);
+    transition: width 0.1s;
+    box-shadow: 0 0 10px #f00;
+  }
+  .loading-text {
+    margin-top: 15px;
+    font-family: 'Creepster', cursive;
+    font-size: 1.2rem;
+    color: #8b0000;
+    animation: flicker 2s infinite;
+  }
+
+  /* MAIN MENU */
+  #menu-screen {
+    background: radial-gradient(ellipse at center, #0a0005 0%, #000 100%);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    overflow-y: auto;
+  }
+  .menu-title {
+    font-family: 'Creepster', cursive;
+    font-size: 4rem;
+    color: #8b0000;
+    text-shadow: 0 0 20px #f00, 0 0 40px #f00;
+    animation: flicker 3s infinite, float 4s ease-in-out infinite;
+    text-align: center;
+    letter-spacing: 5px;
+  }
+  .menu-subtitle {
+    font-size: 1rem;
+    color: #555;
+    letter-spacing: 8px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+  .menu-form {
+    background: rgba(20,0,0,0.8);
+    border: 1px solid #8b0000;
+    box-shadow: 0 0 30px rgba(139,0,0,0.3), inset 0 0 30px rgba(0,0,0,0.5);
+    padding: 30px;
+    width: 450px;
+    max-width: 90vw;
+    border-radius: 5px;
+  }
+  .form-title {
+    font-family: 'Creepster', cursive;
+    color: #8b0000;
+    font-size: 1.5rem;
+    text-align: center;
+    margin-bottom: 20px;
+    letter-spacing: 3px;
+  }
+  .form-group {
+    margin-bottom: 15px;
+  }
+  .form-group label {
+    display: block;
+    color: #888;
+    font-size: 0.85rem;
+    margin-bottom: 5px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .form-group input, .form-group select {
+    width: 100%;
+    background: rgba(0,0,0,0.7);
+    border: 1px solid #333;
+    border-radius: 3px;
+    color: #fff;
+    padding: 10px;
+    font-family: 'Special Elite', cursive;
+    font-size: 1rem;
+    transition: border-color 0.3s;
+    outline: none;
+  }
+  .form-group input:focus, .form-group select:focus {
+    border-color: #8b0000;
+    box-shadow: 0 0 10px rgba(139,0,0,0.5);
+  }
+  .form-group select option { background: #111; }
+  .menu-btn {
+    width: 100%;
+    padding: 15px;
+    background: linear-gradient(135deg, #5a0000, #8b0000);
+    border: none;
+    color: #fff;
+    font-family: 'Creepster', cursive;
+    font-size: 1.5rem;
+    letter-spacing: 5px;
+    cursor: pointer;
+    margin-top: 10px;
+    border-radius: 3px;
+    transition: all 0.3s;
+    text-transform: uppercase;
+    box-shadow: 0 0 15px rgba(139,0,0,0.5);
+  }
+  .menu-btn:hover {
+    background: linear-gradient(135deg, #8b0000, #ff0000);
+    box-shadow: 0 0 30px rgba(255,0,0,0.7);
+    transform: scale(1.02);
+  }
+  .ghost-decoration {
+    font-size: 3rem;
+    position: fixed;
+    animation: ghost-float 6s ease-in-out infinite;
+    opacity: 0.3;
+  }
+  .perm-info {
+    font-size: 0.7rem;
+    color: #444;
+    text-align: center;
+    margin-top: 10px;
+    letter-spacing: 1px;
+  }
+
+  /* PERMISSION SCREEN */
+  #perm-screen {
+    background: #000;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    text-align: center;
+    padding: 20px;
+  }
+  .perm-title {
+    font-family: 'Creepster', cursive;
+    font-size: 2.5rem;
+    color: #8b0000;
+    animation: flicker 2s infinite;
+  }
+  .perm-text { color: #666; max-width: 400px; line-height: 1.6; }
+  .perm-icons { font-size: 3rem; }
+  .perm-btn {
+    padding: 15px 40px;
+    background: #8b0000;
+    border: none;
+    color: #fff;
+    font-family: 'Creepster', cursive;
+    font-size: 1.3rem;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.3s;
+  }
+  .perm-btn:hover { background: #f00; box-shadow: 0 0 20px #f00; }
+
+  /* GAME SCREEN */
+  #game-screen {
+    flex-direction: column;
+    background: #000;
+  }
+
+  /* WEBCAM */
+  #webcam-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 200px;
+    height: 150px;
+    border: 2px solid #8b0000;
+    box-shadow: 0 0 20px rgba(139,0,0,0.8), inset 0 0 20px rgba(0,0,0,0.5);
+    z-index: 500;
+    overflow: hidden;
+    border-radius: 5px;
+    animation: pulse-red 2s ease-in-out infinite;
+  }
+  #webcam {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+    filter: contrast(1.2) brightness(0.7) hue-rotate(0deg);
+  }
+  .webcam-overlay {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: repeating-linear-gradient(0deg, rgba(0,50,0,0.1) 0px, rgba(0,50,0,0.1) 1px, transparent 1px, transparent 3px);
+    pointer-events: none;
+  }
+  .webcam-label {
+    position: absolute;
+    top: 5px; left: 5px;
+    font-size: 0.6rem;
+    color: #0f0;
+    letter-spacing: 1px;
+    animation: flicker 1s infinite;
+  }
+  .webcam-rec {
+    position: absolute;
+    top: 5px; right: 5px;
+    width: 8px; height: 8px;
+    background: #f00;
+    border-radius: 50%;
+    animation: flicker 0.5s infinite;
+  }
+  .face-detected {
+    position: absolute;
+    border: 1px solid #f00;
+    box-shadow: 0 0 10px #f00;
+    pointer-events: none;
+  }
+
+  /* GAME AREA */
+  #game-area {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* ATMOSPHERE */
+  #atmosphere {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: radial-gradient(ellipse at center, #0a0005 0%, #000 100%);
+  }
+
+  /* STORY BOX */
+  #story-container {
+    position: absolute;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80%;
+    max-width: 700px;
+    background: rgba(5,0,0,0.9);
+    border: 1px solid #8b0000;
+    border-radius: 5px;
+    padding: 20px;
+    box-shadow: 0 0 30px rgba(139,0,0,0.4);
+    z-index: 200;
+    min-height: 120px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  #story-text {
+    color: #ddd;
+    line-height: 1.7;
+    font-size: 0.95rem;
+    white-space: pre-wrap;
+  }
+  #story-text .highlight { color: #f00; font-weight: bold; }
+
+  /* COMMAND DISPLAY */
+  #command-display {
+    position: absolute;
+    top: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.8);
+    border: 1px solid #333;
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    color: #555;
+    letter-spacing: 2px;
+    z-index: 200;
+  }
+  #command-display.listening {
+    border-color: #f00;
+    color: #f00;
+    box-shadow: 0 0 15px rgba(255,0,0,0.5);
+    animation: pulse-red 1s ease-in-out infinite;
+  }
+  #command-display.speaking {
+    border-color: #8b0000;
+    color: #8b0000;
+  }
+
+  /* SCARY ELEMENTS */
+  .ghost {
+    position: absolute;
+    font-size: 5rem;
+    animation: ghost-float 4s ease-in-out infinite;
+    filter: drop-shadow(0 0 20px rgba(255,255,255,0.5));
+    cursor: pointer;
+    user-select: none;
+  }
+  .eye {
+    position: absolute;
+    font-size: 2rem;
+    animation: eye-glow 2s ease-in-out infinite;
+    cursor: pointer;
+  }
+  .spider {
+    position: absolute;
+    font-size: 1.5rem;
+    animation: float 3s ease-in-out infinite;
+  }
+  .skull {
+    position: absolute;
+    font-size: 3rem;
+    animation: heartbeat 2s ease-in-out infinite;
+  }
+
+  /* HORROR ROOM */
+  #horror-room {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .room-element {
+    position: absolute;
+    transition: all 1s ease;
+  }
+
+  /* JUMP SCARE */
+  #jump-scare {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: #000;
+    z-index: 9000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 20rem;
+    animation: shake 0.5s ease-in-out;
+  }
+  #jump-scare.show { display: flex; }
+
+  /* STATS BAR */
+  #stats-bar {
+    position: absolute;
+    top: 10px;
+    right: 220px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 300;
+  }
+  .stat-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    color: #555;
+  }
+  .stat-bar {
+    width: 100px;
+    height: 8px;
+    background: #111;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid #222;
+  }
+  .stat-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s ease;
+  }
+  .sanity-fill { background: linear-gradient(to right, #8b0000, #00ff41); }
+  .fear-fill { background: linear-gradient(to right, #ff6600, #ff0000); }
+  .health-fill { background: linear-gradient(to right, #8b0000, #ff0000); }
+
+  /* INVENTORY */
+  #inventory {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    display: flex;
+    gap: 10px;
+    z-index: 300;
+  }
+  .inv-slot {
+    width: 50px;
+    height: 50px;
+    border: 1px solid #333;
+    border-radius: 5px;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .inv-slot:hover {
+    border-color: #8b0000;
+    box-shadow: 0 0 10px rgba(139,0,0,0.5);
+  }
+  .inv-slot.has-item { border-color: #8b0000; }
+
+  /* LOCATION */
+  #location-display {
+    position: absolute;
+    top: 70px;
+    left: 10px;
+    font-size: 0.7rem;
+    color: #333;
+    letter-spacing: 2px;
+    z-index: 300;
+  }
+
+  /* MIC VISUALIZER */
+  #mic-viz {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 3px;
+    align-items: flex-end;
+    height: 30px;
+    z-index: 300;
+  }
+  .mic-bar {
+    width: 4px;
+    background: #8b0000;
+    border-radius: 2px;
+    transition: height 0.05s;
+    min-height: 3px;
+  }
+
+  /* TRANSCRIPT */
+  #transcript-display {
+    position: absolute;
+    bottom: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.8rem;
+    color: #333;
+    letter-spacing: 1px;
+    z-index: 200;
+    max-width: 500px;
+    text-align: center;
+  }
+  #transcript-display.active { color: #8b0000; }
+
+  /* CHAPTER TITLE */
+  #chapter-title {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Creepster', cursive;
+    font-size: 3rem;
+    color: #8b0000;
+    text-shadow: 0 0 30px #f00;
+    z-index: 1000;
+    display: none;
+    text-align: center;
+    animation: creep-in 1s ease-out;
+    pointer-events: none;
+  }
+
+  /* BLOOD SPLASH */
+  .blood-splash {
+    position: fixed;
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #8b0000 0%, transparent 70%);
+    animation: blood-spread 1s ease-out forwards;
+    pointer-events: none;
+    z-index: 8000;
+  }
+
+  /* GAME OVER */
+  #gameover-screen {
+    background: #000;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    text-align: center;
+    padding: 20px;
+  }
+  #gameover-title {
+    font-family: 'Creepster', cursive;
+    font-size: 5rem;
+    color: #8b0000;
+    text-shadow: 0 0 30px #f00;
+    animation: flicker 2s infinite, float 3s ease-in-out infinite;
+  }
+  .gameover-text { color: #555; font-size: 1.1rem; line-height: 1.8; }
+  .gameover-stats {
+    background: rgba(20,0,0,0.8);
+    border: 1px solid #8b0000;
+    padding: 20px;
+    min-width: 300px;
+    border-radius: 5px;
+  }
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    border-bottom: 1px solid #1a0000;
+    font-size: 0.9rem;
+    color: #888;
+  }
+  .stat-row span:last-child { color: #8b0000; }
+
+  /* WIN SCREEN */
+  #win-screen {
+    background: radial-gradient(ellipse at center, #001a00 0%, #000 100%);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    text-align: center;
+    padding: 20px;
+  }
+  #win-title {
+    font-family: 'Creepster', cursive;
+    font-size: 4rem;
+    color: #00ff41;
+    text-shadow: 0 0 30px #0f0;
+    animation: flicker 3s infinite;
+  }
+
+  /* NOTIFICATIONS */
+  #notification-area {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 1000;
+    pointer-events: none;
+  }
+  .notification {
+    background: rgba(20,0,0,0.9);
+    border-left: 3px solid #8b0000;
+    padding: 10px 15px;
+    font-size: 0.85rem;
+    color: #aaa;
+    max-width: 250px;
+    animation: creep-in 0.5s ease-out;
+    box-shadow: 0 0 15px rgba(139,0,0,0.3);
+    border-radius: 0 3px 3px 0;
+  }
+
+  /* HORROR ENTITIES */
+  .entity {
+    position: absolute;
+    transition: all 2s ease;
+    cursor: pointer;
+  }
+  .entity:hover {
+    filter: drop-shadow(0 0 20px #f00);
+    transform: scale(1.1);
+  }
+
+  /* DARK OVERLAY */
+  #dark-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0);
+    pointer-events: none;
+    z-index: 5000;
+    transition: background 2s ease;
+  }
+  #dark-overlay.blackout { background: rgba(0,0,0,0.95); }
+
+  /* WHISPER TEXT */
+  .whisper-text {
+    position: fixed;
+    font-size: 0.7rem;
+    color: rgba(139,0,0,0.3);
+    pointer-events: none;
+    z-index: 200;
+    letter-spacing: 5px;
+    animation: float 5s ease-in-out infinite;
+    font-family: 'Creepster', cursive;
+    white-space: nowrap;
+  }
+
+  /* COMPASS / MAP */
+  #mini-map {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 80px;
+    border: 1px solid #222;
+    background: rgba(0,0,0,0.7);
+    z-index: 300;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .map-room {
+    position: absolute;
+    border: 1px solid #333;
+    background: rgba(50,0,0,0.3);
+    border-radius: 2px;
+  }
+  .map-player {
+    position: absolute;
+    width: 6px; height: 6px;
+    background: #f00;
+    border-radius: 50%;
+    box-shadow: 0 0 5px #f00;
+    transform: translate(-50%, -50%);
+    transition: all 0.5s ease;
+  }
+
+  /* VHS EFFECT */
+  .vhs-text {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    font-size: 0.7rem;
+    color: rgba(0,255,65,0.6);
+    z-index: 9995;
+    letter-spacing: 2px;
+    animation: flicker 1s infinite;
+  }
+  .vhs-counter {
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
+    font-size: 0.6rem;
+    color: rgba(0,255,65,0.4);
+    z-index: 9995;
+    letter-spacing: 1px;
+  }
+
+  /* BREATHING OVERLAY */
+  #breathing-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 4000;
+    border-radius: 50%;
+  }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: #000; }
+  ::-webkit-scrollbar-thumb { background: #8b0000; border-radius: 2px; }
+
+  /* HELP PANEL */
+  #help-panel {
+    position: fixed;
+    bottom: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(5,0,0,0.95);
+    border: 1px solid #1a0000;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-size: 0.75rem;
+    color: #333;
+    z-index: 250;
+    text-align: center;
+    letter-spacing: 1px;
+    display: none;
+  }
+  .cmd-tag {
+    display: inline-block;
+    background: rgba(139,0,0,0.2);
+    border: 1px solid #8b0000;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin: 3px;
+    font-size: 0.7rem;
+    color: #8b0000;
   }
 </style>
 </head>
 <body>
 
-<div id="app">
+<!-- ATMOSPHERIC ELEMENTS -->
+<div class="scanlines"></div>
+<div class="scan-line"></div>
+<div class="vignette"></div>
+<div class="particles" id="particle-container"></div>
+<div id="dark-overlay"></div>
+<div id="breathing-overlay"></div>
 
-  <section class="screen active" id="startScreen">
-    <h1>SIE BEOBACHTET DICH</h1>
-    <p>Horror-Erlebnis im Stil von "Take This Lollipop" — mit Kamera, Sprachdialog und vier Kontakten, die live per "Videocall" mit dabei sind.</p>
-    <div id="consentBox">
-      🔒 <strong>Transparenz:</strong><br><br>
-      • Kamera &amp; ggf. Mikrofon werden lokal im Browser verarbeitet — nichts wird hochgeladen oder gespeichert.<br><br>
-      • Face-Tracking läuft (wo unterstützt) nativ auf deinem Gerät; sonst ein klar gekennzeichnetes simuliertes Reticle.<br><br>
-      • <strong>Der Sprachdialog ist ein lokales Muster-/Reaktionssystem, keine echte freie KI-Unterhaltung.</strong> Es erkennt Stichworte in dem, was du sagst, reagiert darauf oder wiederholt/verarbeitet zumindest hörbar deine Worte — es "versteht" nicht wirklich alles wie ein Mensch oder eine echte KI.<br><br>
-      • Die Zusatz-Infos im Spiel ("Zeitzone", "Sprache", "Auflösung", "System") sind echte, aber völlig harmlose Werte, die dein Browser ohnehin jeder Webseite automatisch mitteilt — kein geheimes Auslesen.<br><br>
-      • Die "4 Kontakte" inkl. ihrer "Kamera-Kacheln" sind komplett fiktive, computergenerierte Platzhalter-Charaktere — keine echten Personen, keine echten Video-Feeds, keine echte Kontaktliste.<br><br>
-      • Alle "Analyse"-Anzeigen sind inszeniert und fiktiv.
-    </div>
-    <div id="optionsRow">
-      <button class="toggleBtn on" id="micToggle" type="button">🎤 Mikrofon-Dialog: AN</button>
-      <button class="toggleBtn on" id="voiceToggle" type="button">🔊 Sprachausgabe: AN</button>
-    </div>
-    <button id="beginBtn">Kamera aktivieren &amp; beginnen</button>
-    <small>Nicht geeignet bei Herzproblemen, Epilepsie oder Angst vor Jumpscares. Dauer ca. 8–11 Minuten.</small>
-  </section>
+<!-- VHS LABELS -->
+<div class="vhs-text" id="vhs-text">● REC</div>
+<div class="vhs-counter" id="vhs-counter">00:00:00</div>
 
-  <section class="screen" id="permScreen">
-    <h1 style="font-size:28px;">Zugriff angefragt...</h1>
-    <p id="permText">Bitte erlaube den Kamera- (und Mikrofon-)Zugriff im Browser-Dialog.</p>
-  </section>
+<!-- BLOOD DROPS -->
+<div class="blood-container" id="blood-container"></div>
 
-  <section class="screen" id="errScreen">
-    <h1 style="font-size:26px;">Kein Zugriff möglich</h1>
-    <p id="errText">Ohne Kamera kann dieses Erlebnis leider nicht funktionieren.</p>
-    <button id="retryBtn">Erneut versuchen</button>
-  </section>
+<!-- NOTIFICATION AREA -->
+<div id="notification-area"></div>
 
-  <section class="screen" id="connectScreen">
-    <h2 class="sub">Verbinde mit Netzwerk...</h2>
-    <div id="netGraph"></div>
-    <div id="connectStatus">Initialisiere...</div>
-  </section>
+<!-- CHAPTER TITLE -->
+<div id="chapter-title"></div>
 
-  <section class="screen" id="gameScreen">
-    <div id="camWrap">
-      <video id="video" autoplay playsinline muted></video>
-      <canvas id="fx"></canvas>
-      <canvas id="faceCanvas"></canvas>
-      <div id="noise"></div>
-      <div id="scanlines"></div>
-      <div id="vignette"></div>
-
-      <div id="hudTop">
-        <div><span class="dot"></span>REC ● LIVE</div>
-        <div id="clock">00:00:00</div>
-      </div>
-
-      <div id="meterWrap">
-        <div id="meterLabel">NÄHE</div>
-        <div id="meterBar"><div id="meterFill"></div></div>
-      </div>
-
-      <div id="callStrip"></div>
-
-      <div id="dataPanel">
-        <h3 id="dataPanelTitle">Analysiere Ziel</h3>
-        <div id="dataLines"></div>
-      </div>
-
-      <div id="status">Initialisiere...</div>
-
-      <div id="micUI">
-        <div id="micIndicator"><div id="micDot"></div>ZUHÖREN...</div>
-        <div id="transcript"></div>
-      </div>
-
-      <div class="flash" id="flash"></div>
-    </div>
-
-    <div id="finalMsg">
-      <h2 id="finalTitle">SIE HAT EUCH ALLE GEFUNDEN</h2>
-      <p id="finalSub">Take This Lollipop — Hommage · fiktive Charaktere · rein fiktives Erlebnis</p>
-      <div id="finalContacts"></div>
-      <button class="small" id="restartBtn">Neu starten</button>
-    </div>
-  </section>
-
+<!-- JUMP SCARE -->
+<div id="jump-scare" onclick="closeJumpScare()">
+  <span id="jumpscare-emoji">👻</span>
 </div>
 
-<footer>Fan-Hommage · fiktive Charaktere · kein echtes Data-Scraping</footer>
+<!-- LOADING SCREEN -->
+<div id="loading-screen" class="screen active">
+  <div class="loading-skull">💀</div>
+  <div style="font-family:'Creepster',cursive;font-size:2rem;color:#8b0000;letter-spacing:5px;margin-top:20px;">
+    FLÜSTERN AUS DER DUNKELHEIT
+  </div>
+  <div class="loading-bar-container">
+    <div class="loading-bar" id="loading-bar"></div>
+  </div>
+  <div class="loading-text" id="loading-text">LADE ALBTRÄUME...</div>
+</div>
+
+<!-- PERMISSION SCREEN -->
+<div id="perm-screen" class="screen">
+  <div class="perm-title">⚠ BERECHTIGUNGEN BENÖTIGT</div>
+  <div class="perm-icons">🎤 📷 🔊</div>
+  <div class="perm-text">
+    Dieses Spiel benötigt <strong style="color:#8b0000">Mikrofon</strong>, 
+    <strong style="color:#8b0000">Kamera</strong> und 
+    <strong style="color:#8b0000">Lautsprecher</strong>.<br><br>
+    Du wirst mit deiner <em>Stimme</em> interagieren.<br>
+    Das Spiel <em>spricht</em> mit dir.<br>
+    Die Kamera <em>beobachtet</em> dich...<br><br>
+    <em style="color:#333;font-size:0.8rem">...sie wartet bereits auf dich.</em>
+  </div>
+  <button class="perm-btn" onclick="requestPermissions()">ZUGANG GEWÄHREN</button>
+</div>
+
+<!-- MAIN MENU -->
+<div id="menu-screen" class="screen">
+  <div class="ghost-decoration" style="top:10%;left:5%;animation-delay:0s">👻</div>
+  <div class="ghost-decoration" style="top:60%;right:5%;animation-delay:2s">🦇</div>
+  <div class="ghost-decoration" style="bottom:10%;left:10%;animation-delay:4s">🕷️</div>
+  <div class="ghost-decoration" style="top:20%;right:15%;animation-delay:1s">💀</div>
+
+  <div class="menu-title">💀 FLÜSTERN 💀<br>AUS DER<br>DUNKELHEIT</div>
+  <div class="menu-subtitle">Ein interaktives Horror-Erlebnis</div>
+
+  <div class="menu-form">
+    <div class="form-title">⚰ PROFIL ERSTELLEN ⚰</div>
+
+    <div class="form-group">
+      <label>🩸 Dein Name (wird verwendet)</label>
+      <input type="text" id="player-name" placeholder="Wie soll ich dich nennen?" maxlength="20">
+    </div>
+
+    <div class="form-group">
+      <label>💀 Schwierigkeitsgrad</label>
+      <select id="difficulty">
+        <option value="easy">🕯 Leicht - Nur ein schlechter Traum</option>
+        <option value="medium" selected>🩸 Mittel - Echter Horror</option>
+        <option value="hard">💀 Schwer - Psyhologische Folter</option>
+        <option value="nightmare">👁 Alptraum - Du wirst scheitern</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>🎭 Horror-Szenario</label>
+      <select id="scenario">
+        <option value="house">🏚 Das verlassene Haus</option>
+        <option value="asylum">🏥 Die Irrenanstalt</option>
+        <option value="forest">🌲 Der verfluchte Wald</option>
+        <option value="underwater">🌊 Die versunkene Stadt</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>👁 Kamera-Effekte</label>
+      <select id="cam-effect">
+        <option value="night">🌑 Nachtsicht (Grün)</option>
+        <option value="blood">🩸 Blutrot</option>
+        <option value="ghost">👻 Geister-Modus</option>
+        <option value="normal">📷 Normal</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>🔊 Stimme auswählen</label>
+      <select id="voice-select" onchange="previewVoice()">
+        <option value="">-- Stimme laden... --</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>🔈 Lautstärke der Musik</label>
+      <input type="range" id="music-volume" min="0" max="100" value="40" 
+             style="accent-color:#8b0000">
+    </div>
+
+    <div class="form-group">
+      <label>📢 Sprechlautstärke</label>
+      <input type="range" id="speech-volume" min="0" max="100" value="80"
+             style="accent-color:#8b0000">
+    </div>
+
+    <div class="form-group">
+      <label>⚡ Jump-Scares aktivieren</label>
+      <select id="jumpscares">
+        <option value="yes">Ja - Ich bereue es</option>
+        <option value="no">Nein - Ich bin feige</option>
+      </select>
+    </div>
+
+    <button class="menu-btn" onclick="startGame()">⚰ EINTRETEN ⚰</button>
+    <div class="perm-info">* Stelle sicher dass Mikrofon & Kamera erlaubt sind</div>
+  </div>
+</div>
+
+<!-- GAME SCREEN -->
+<div id="game-screen" class="screen">
+  <div id="game-area">
+    <div id="atmosphere"></div>
+    <div id="horror-room"></div>
+
+    <!-- STATS -->
+    <div id="stats-bar">
+      <div class="stat-item">
+        <span>🧠 VERSTAND</span>
+        <div class="stat-bar"><div class="stat-fill sanity-fill" id="sanity-bar" style="width:100%"></div></div>
+        <span id="sanity-val">100</span>
+      </div>
+      <div class="stat-item">
+        <span>😱 ANGST</span>
+        <div class="stat-bar"><div class="stat-fill fear-fill" id="fear-bar" style="width:0%"></div></div>
+        <span id="fear-val">0</span>
+      </div>
+      <div class="stat-item">
+        <span>❤️ LEBEN</span>
+        <div class="stat-bar"><div class="stat-fill health-fill" id="health-bar" style="width:100%"></div></div>
+        <span id="health-val">100</span>
+      </div>
+    </div>
+
+    <!-- MINI MAP -->
+    <div id="mini-map">
+      <div class="map-room" style="left:5px;top:5px;width:25px;height:20px;"></div>
+      <div class="map-room" style="left:35px;top:5px;width:30px;height:20px;"></div>
+      <div class="map-room" style="left:70px;top:5px;width:25px;height:20px;"></div>
+      <div class="map-room" style="left:5px;top:30px;width:40px;height:20px;"></div>
+      <div class="map-room" style="left:50px;top:30px;width:40px;height:20px;"></div>
+      <div class="map-room" style="left:20px;top:55px;width:55px;height:18px;"></div>
+      <div class="map-player" id="map-player" style="left:60px;top:65px;"></div>
+    </div>
+
+    <!-- INVENTORY -->
+    <div id="inventory">
+      <div class="inv-slot" id="slot-0" title="Leer"></div>
+      <div class="inv-slot" id="slot-1" title="Leer"></div>
+      <div class="inv-slot" id="slot-2" title="Leer"></div>
+      <div class="inv-slot" id="slot-3" title="Leer"></div>
+      <div class="inv-slot" id="slot-4" title="Leer"></div>
+    </div>
+
+    <!-- LOCATION -->
+    <div id="location-display">📍 UNBEKANNTER ORT</div>
+
+    <!-- COMMAND DISPLAY -->
+    <div id="command-display">🎤 SAGEN SIE ETWAS...</div>
+
+    <!-- STORY BOX -->
+    <div id="story-container">
+      <div id="story-text">Die Dunkelheit empfängt dich...</div>
+    </div>
+
+    <!-- HELP PANEL -->
+    <div id="help-panel">
+      <div>SPRACHBEFEHLE:</div>
+      <div style="margin-top:5px">
+        <span class="cmd-tag">geh rein / vorwärts</span>
+        <span class="cmd-tag">schau um / schaue</span>
+        <span class="cmd-tag">nimm / aufheben</span>
+        <span class="cmd-tag">suche / durchsuche</span>
+        <span class="cmd-tag">öffne / aufmachen</span>
+        <span class="cmd-tag">laufe / renne</span>
+        <span class="cmd-tag">bete / betone</span>
+        <span class="cmd-tag">schrei / hilfe</span>
+        <span class="cmd-tag">zurück / rückwärts</span>
+        <span class="cmd-tag">inventar / items</span>
+        <span class="cmd-tag">karte / wo bin ich</span>
+        <span class="cmd-tag">status / wie geht es</span>
+      </div>
+    </div>
+
+    <!-- TRANSCRIPT -->
+    <div id="transcript-display">Drücke und halte [LEERTASTE] zum Sprechen</div>
+
+    <!-- MIC VISUALIZER -->
+    <div id="mic-viz"></div>
+  </div>
+</div>
+
+<!-- WEBCAM -->
+<div id="webcam-container" style="display:none">
+  <video id="webcam" autoplay muted playsinline></video>
+  <div class="webcam-overlay"></div>
+  <div class="webcam-label" id="webcam-label">● LIVE</div>
+  <div class="webcam-rec"></div>
+  <canvas id="face-canvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;"></canvas>
+</div>
+
+<!-- GAME OVER SCREEN -->
+<div id="gameover-screen" class="screen">
+  <div id="gameover-title">💀 DU BIST GESTORBEN 💀</div>
+  <div class="gameover-text" id="gameover-text">Die Dunkelheit hat dich verschluckt...</div>
+  <div class="gameover-stats" id="gameover-stats"></div>
+  <button class="menu-btn" style="width:auto;padding:15px 40px;margin-top:10px" onclick="restartGame()">⟳ NOCHMAL</button>
+</div>
+
+<!-- WIN SCREEN -->
+<div id="win-screen" class="screen">
+  <div id="win-title">☠ DU HAST ÜBERLEBT ☠</div>
+  <div class="gameover-text" id="win-text">Irgendwie bist du dem Grauen entkommen...</div>
+  <div class="gameover-stats" id="win-stats"></div>
+  <button class="menu-btn" style="width:auto;padding:15px 40px;margin-top:10px;background:linear-gradient(135deg,#003300,#006600)" onclick="restartGame()">⟳ NOCHMAL SPIELEN</button>
+</div>
 
 <script>
-(() => {
-  const $ = id => document.getElementById(id);
-  const screens = { start:$('startScreen'), perm:$('permScreen'), err:$('errScreen'), connect:$('connectScreen'), game:$('gameScreen') };
-  function showScreen(name){ Object.values(screens).forEach(s=>s.classList.remove('active')); screens[name].classList.add('active'); }
+// ====================================================
+// FLÜSTERN AUS DER DUNKELHEIT - HAUPTSPIEL
+// All-In-One Horror Voice Game
+// ====================================================
 
-  const video = $('video');
-  const fx = $('fx'); const ctx = fx.getContext('2d');
-  const faceCanvas = $('faceCanvas'); const fctx = faceCanvas.getContext('2d');
-  const status = $('status');
-  const dataPanel = $('dataPanel'); const dataPanelTitle = $('dataPanelTitle'); const dataLines = $('dataLines');
-  const meterFill = $('meterFill');
-  const noise = $('noise'); const flash = $('flash');
-  const finalMsg = $('finalMsg'); const finalTitle = $('finalTitle'); const finalSub = $('finalSub'); const finalContacts = $('finalContacts');
-  const clock = $('clock'); const camWrap = $('camWrap');
-  const micIndicator = $('micIndicator'); const transcriptEl = $('transcript');
-  const callStrip = $('callStrip');
-  const netGraph = $('netGraph'); const connectStatus = $('connectStatus');
+// ─────────────────────────────────────────────────
+// AUDIO ENGINE
+// ─────────────────────────────────────────────────
+let audioCtx = null;
+let musicGain = null;
+let sfxGain = null;
+let ambienceNodes = [];
+let currentMusic = null;
 
-  let stream = null, startTime = null, clockInterval = null, ended = false;
-  let micEnabled = true, voiceEnabled = true, playerName = '', lastHeard = '';
+function initAudio() {
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    musicGain = audioCtx.createGain();
+    sfxGain = audioCtx.createGain();
+    musicGain.connect(audioCtx.destination);
+    sfxGain.connect(audioCtx.destination);
+    setMusicVolume(0.4);
+    setSFXVolume(0.7);
+  } catch(e) { console.warn('Audio init failed:', e); }
+}
 
-  function wait(ms){ return new Promise(r=>setTimeout(r,ms)); }
+function setMusicVolume(v) { if(musicGain) musicGain.gain.setTargetAtTime(v, audioCtx.currentTime, 0.1); }
+function setSFXVolume(v) { if(sfxGain) sfxGain.gain.setTargetAtTime(v, audioCtx.currentTime, 0.1); }
 
-  // ================= FICTIONAL CONTACTS =================
-  const AVATAR_COLORS = ['#7a3b3b','#3b5f7a','#4b7a3b','#6a3b7a'];
-  const VOICE_PROFILES = [ {pitch:0.95,rate:0.95}, {pitch:0.5,rate:0.9}, {pitch:1.15,rate:1.0}, {pitch:0.65,rate:0.88} ];
-  const contacts = [
-    { id:0, name:'Lena K.', status:'live', animT:Math.random()*10, tileEl:null, canvasEl:null, cctx:null, captionEl:null },
-    { id:1, name:'Tom R.',  status:'live', animT:Math.random()*10, tileEl:null, canvasEl:null, cctx:null, captionEl:null },
-    { id:2, name:'Mira S.', status:'live', animT:Math.random()*10, tileEl:null, canvasEl:null, cctx:null, captionEl:null },
-    { id:3, name:'Jonas W.',status:'live', animT:Math.random()*10, tileEl:null, canvasEl:null, cctx:null, captionEl:null },
-  ];
+function playTone(freq, type='sine', duration=0.5, vol=0.3, delay=0) {
+  if(!audioCtx) return;
+  try {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(sfxGain);
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime + delay);
+    gain.gain.setValueAtTime(0, audioCtx.currentTime + delay);
+    gain.gain.linearRampToValueAtTime(vol, audioCtx.currentTime + delay + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + delay + duration);
+    osc.start(audioCtx.currentTime + delay);
+    osc.stop(audioCtx.currentTime + delay + duration + 0.1);
+  } catch(e) {}
+}
 
-  function avatarSVG(idx){
-    const c = AVATAR_COLORS[idx];
-    return `<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-      <rect width="40" height="40" fill="${c}"/>
-      <circle cx="20" cy="15" r="8" fill="rgba(255,255,255,0.55)"/>
-      <path d="M4 40 C4 27 36 27 36 40 Z" fill="rgba(255,255,255,0.45)"/>
-    </svg>`;
+function playHeartbeat() {
+  if(!audioCtx) return;
+  playTone(60, 'sine', 0.1, 0.5, 0);
+  playTone(55, 'sine', 0.15, 0.4, 0.15);
+}
+
+function playCreepyAmbience() {
+  if(!audioCtx) return;
+  // Low drone
+  const osc1 = audioCtx.createOscillator();
+  const gain1 = audioCtx.createGain();
+  const lfo = audioCtx.createOscillator();
+  const lfoGain = audioCtx.createGain();
+  lfo.frequency.value = 0.1;
+  lfoGain.gain.value = 5;
+  lfo.connect(lfoGain);
+  lfoGain.connect(osc1.frequency);
+  osc1.type = 'sawtooth';
+  osc1.frequency.value = 55;
+  gain1.gain.value = 0.03;
+  osc1.connect(gain1);
+  gain1.connect(musicGain);
+  lfo.start();
+  osc1.start();
+  ambienceNodes.push(osc1, gain1, lfo, lfoGain);
+
+  // High whisper
+  const osc2 = audioCtx.createOscillator();
+  const gain2 = audioCtx.createGain();
+  osc2.type = 'sine';
+  osc2.frequency.value = 1200;
+  gain2.gain.value = 0.005;
+  osc2.connect(gain2);
+  gain2.connect(musicGain);
+  osc2.start();
+  ambienceNodes.push(osc2, gain2);
+
+  // Random noise-like
+  playRandomNoises();
+}
+
+function playRandomNoises() {
+  if(!audioCtx) return;
+  const schedule = () => {
+    if(!gameState.running) return;
+    const delay = 3000 + Math.random() * 10000;
+    setTimeout(() => {
+      if(!gameState.running) return;
+      const r = Math.random();
+      if(r < 0.3) { playScream(); }
+      else if(r < 0.6) { playKnock(); }
+      else { playWhisperSound(); }
+      schedule();
+    }, delay);
+  };
+  schedule();
+}
+
+function playScream() {
+  if(!audioCtx) return;
+  for(let i = 0; i < 5; i++) {
+    playTone(200 + Math.random()*800, 'sawtooth', 0.3, 0.02, i*0.1);
   }
+}
 
-  function renderCallStrip(){
-    callStrip.innerHTML = '';
-    contacts.forEach((c,i)=>{
-      const tile = document.createElement('div');
-      tile.className = 'camTile';
-      tile.innerHTML = `
-        <div class="recDot"></div>
-        <canvas width="132" height="96"></canvas>
-        <div class="tileLabel">${c.name}</div>
-        <div class="tileStatus" id="tst-${i}">LIVE</div>
-        <div class="caption" id="cap-${i}"></div>
-      `;
-      callStrip.appendChild(tile);
-      c.tileEl = tile;
-      c.canvasEl = tile.querySelector('canvas');
-      c.cctx = c.canvasEl.getContext('2d');
-      c.captionEl = tile.querySelector('.caption');
-    });
+function playKnock() {
+  if(!audioCtx) return;
+  for(let i = 0; i < 3; i++) {
+    playTone(80, 'sine', 0.05, 0.4, i*0.3);
+    playTone(60, 'sine', 0.05, 0.3, i*0.3 + 0.05);
   }
+}
 
-  function setContactStatus(i, statusText, cls){
-    const c = contacts[i];
-    const st = $('tst-'+i);
-    if(!c.tileEl || !st) return;
-    st.textContent = statusText;
-    c.tileEl.classList.remove('offline','corrupt','gone','speaking');
-    if(cls) c.tileEl.classList.add(cls);
-    c.status = cls || 'live';
+function playWhisperSound() {
+  if(!audioCtx) return;
+  const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.5, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for(let i = 0; i < data.length; i++) {
+    data[i] = (Math.random() * 2 - 1) * 0.02;
   }
+  const src = audioCtx.createBufferSource();
+  const gain = audioCtx.createGain();
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.frequency.value = 1500 + Math.random()*1000;
+  filter.Q.value = 0.5;
+  src.buffer = buf;
+  src.loop = true;
+  src.connect(filter);
+  filter.connect(gain);
+  gain.connect(musicGain);
+  gain.gain.setValueAtTime(0.8, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+  src.start();
+  src.stop(audioCtx.currentTime + 0.5);
+}
 
-  function showCaption(i, text){
-    const c = contacts[i];
-    if(!c.captionEl) return;
-    c.captionEl.textContent = text;
-    c.captionEl.classList.add('show');
-    clearTimeout(c._capTimer);
-    c._capTimer = setTimeout(()=>c.captionEl.classList.remove('show'), 4200);
+function playJumpScareSound() {
+  if(!audioCtx) return;
+  for(let i = 0; i < 20; i++) {
+    playTone(100 + i*80, 'sawtooth', 0.5, 0.1, i*0.02);
   }
+  playTone(50, 'sine', 1, 0.5, 0);
+}
 
-  function drawContactFrame(i){
-    const c = contacts[i];
-    if(!c.cctx) return;
-    const cx = c.cctx, w = c.canvasEl.width, h = c.canvasEl.height;
-    c.animT += 0.045;
-    cx.clearRect(0,0,w,h);
-    if(c.status === 'gone'){
-      cx.fillStyle = '#050505'; cx.fillRect(0,0,w,h);
-      cx.strokeStyle = '#ff1a1a'; cx.lineWidth = 3; cx.globalAlpha = 0.85;
-      cx.beginPath(); cx.moveTo(10,10); cx.lineTo(w-10,h-10); cx.moveTo(w-10,10); cx.lineTo(10,h-10); cx.stroke();
-      cx.globalAlpha = 1;
-      cx.fillStyle = '#ff4444'; cx.font = '8px monospace'; cx.textAlign='center';
-      cx.fillText('SIGNAL VERLOREN', w/2, h-6);
-      return;
-    }
-    cx.fillStyle = AVATAR_COLORS[i]; cx.fillRect(0,0,w,h);
-    const breathe = 1 + Math.sin(c.animT)*0.05;
-    cx.fillStyle = 'rgba(255,255,255,0.5)';
-    cx.beginPath(); cx.ellipse(w/2, h*0.4, w*0.15*breathe, h*0.24*breathe, 0,0,Math.PI*2); cx.fill();
-    cx.beginPath(); cx.ellipse(w/2, h*1.0, w*0.36, h*0.32, 0,0,Math.PI*2); cx.fill();
+function playPickupSound() {
+  playTone(440, 'sine', 0.1, 0.3);
+  playTone(660, 'sine', 0.1, 0.3, 0.1);
+}
 
-    let grain = 25;
-    if(c.status === 'corrupt') grain = 160;
-    if(c.status === 'speaking') grain = 40;
-    for(let n=0;n<grain;n++){
-      cx.fillStyle = `rgba(255,255,255,${Math.random()*0.18})`;
-      cx.fillRect(Math.random()*w, Math.random()*h, 1, 1);
-    }
-    if(c.status === 'corrupt' && Math.random() < 0.35){
-      const y = Math.random()*h, sh = 2+Math.random()*8;
-      cx.fillStyle = 'rgba(255,60,0,0.3)'; cx.fillRect(0,y,w,sh);
-    }
-    // subtle scanline
-    cx.fillStyle = 'rgba(0,0,0,0.08)';
-    for(let y=0;y<h;y+=3){ cx.fillRect(0,y,w,1); }
+function playDoorSound() {
+  playTone(80, 'sine', 0.3, 0.4);
+  playTone(60, 'sawtooth', 0.5, 0.2, 0.1);
+}
+
+function playDeathSound() {
+  if(!audioCtx) return;
+  for(let i = 0; i < 10; i++) {
+    playTone(500 - i*40, 'sawtooth', 0.3, 0.2, i*0.1);
   }
+}
 
-  let tileLoopRunning = false;
-  function tileLoop(){
-    if(!tileLoopRunning) return;
-    contacts.forEach((c,i)=>drawContactFrame(i));
-    requestAnimationFrame(tileLoop);
-  }
+function stopAmbience() {
+  ambienceNodes.forEach(n => { try { n.stop ? n.stop() : n.disconnect(); } catch(e) {} });
+  ambienceNodes = [];
+}
 
-  // ================= CONTACT SPEECH =================
-  function say(text, opts={}){
-    const { pitch=0.55, rate=0.85, asStatus=true, tileIndex=null } = opts;
-    return new Promise(resolve => {
-      if(asStatus) status.textContent = text;
-      if(tileIndex!==null){
-        showCaption(tileIndex, text);
-        contacts[tileIndex].tileEl && contacts[tileIndex].tileEl.classList.add('speaking');
-        $('tst-'+tileIndex) && ($('tst-'+tileIndex).textContent = 'SPRICHT');
-      }
-      function cleanup(){
-        if(tileIndex!==null && contacts[tileIndex].status !== 'gone'){
-          contacts[tileIndex].tileEl && contacts[tileIndex].tileEl.classList.remove('speaking');
-          $('tst-'+tileIndex) && ($('tst-'+tileIndex).textContent = 'LIVE');
-        }
-        resolve();
-      }
-      if(!voiceEnabled || !('speechSynthesis' in window)){
-        setTimeout(cleanup, Math.min(4500, 900+text.length*35));
-        return;
-      }
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang='de-DE'; u.pitch=pitch; u.rate=rate; u.volume=1;
-      const voices = speechSynthesis.getVoices();
-      const deVoice = voices.find(v=>v.lang && v.lang.startsWith('de'));
-      if(deVoice) u.voice = deVoice;
-      u.onend = cleanup; u.onerror = cleanup;
-      speechSynthesis.cancel();
-      speechSynthesis.speak(u);
-    });
-  }
-  function contactSay(i, text){
-    const vp = VOICE_PROFILES[i];
-    return say(text, { pitch:vp.pitch, rate:vp.rate, asStatus:false, tileIndex:i });
-  }
+// Heartbeat rhythm
+let heartbeatInterval = null;
+function startHeartbeat(speed=1500) {
+  if(heartbeatInterval) clearInterval(heartbeatInterval);
+  heartbeatInterval = setInterval(() => {
+    if(gameState.running) playHeartbeat();
+  }, speed);
+}
+function stopHeartbeat() {
+  if(heartbeatInterval) clearInterval(heartbeatInterval);
+  heartbeatInterval = null;
+}
 
-  // ================= TOGGLES =================
-  $('micToggle').addEventListener('click', function(){
-    micEnabled = !micEnabled; this.classList.toggle('on', micEnabled);
-    this.textContent = micEnabled ? '🎤 Mikrofon-Dialog: AN' : '🎤 Mikrofon-Dialog: AUS';
+// ─────────────────────────────────────────────────
+// SPEECH SYNTHESIS
+// ─────────────────────────────────────────────────
+let selectedVoice = null;
+let speechQueue = [];
+let isSpeaking = false;
+
+function loadVoices() {
+  return new Promise(resolve => {
+    const voices = speechSynthesis.getVoices();
+    if(voices.length > 0) { resolve(voices); return; }
+    speechSynthesis.onvoiceschanged = () => resolve(speechSynthesis.getVoices());
+    setTimeout(() => resolve(speechSynthesis.getVoices()), 1000);
   });
-  $('voiceToggle').addEventListener('click', function(){
-    voiceEnabled = !voiceEnabled; this.classList.toggle('on', voiceEnabled);
-    this.textContent = voiceEnabled ? '🔊 Sprachausgabe: AN' : '🔊 Sprachausgabe: AUS';
+}
+
+async function populateVoiceList() {
+  const voices = await loadVoices();
+  const sel = document.getElementById('voice-select');
+  sel.innerHTML = '';
+  voices.forEach((v, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = `${v.name} (${v.lang})`;
+    sel.appendChild(opt);
   });
-  $('beginBtn').addEventListener('click', requestAccess);
-  $('retryBtn').addEventListener('click', requestAccess);
-  $('restartBtn').addEventListener('click', () => location.reload());
+  // Try to preselect German or spooky voice
+  const deIdx = voices.findIndex(v => v.lang.startsWith('de'));
+  if(deIdx >= 0) sel.value = deIdx;
+}
 
-  async function requestAccess(){
-    showScreen('perm');
-    try{
-      const constraints = { video:{ facingMode:'user', width:{ideal:640}, height:{ideal:480} }, audio: micEnabled };
-      stream = await navigator.mediaDevices.getUserMedia(constraints);
-      video.srcObject = stream;
-      await video.play();
-      await runConnectIntro();
-      startGame();
-    }catch(e){
-      $('errText').textContent = 'Zugriff verweigert oder keine Kamera gefunden. ('+(e.message||e.name)+')';
-      showScreen('err');
-    }
+function previewVoice() {
+  const voices = speechSynthesis.getVoices();
+  const idx = parseInt(document.getElementById('voice-select').value);
+  if(voices[idx]) {
+    const utt = new SpeechSynthesisUtterance('Ich warte auf dich...');
+    utt.voice = voices[idx];
+    utt.rate = 0.8;
+    utt.pitch = 0.5;
+    utt.volume = parseFloat(document.getElementById('speech-volume').value) / 100;
+    speechSynthesis.speak(utt);
   }
+}
 
-  function resizeCanvas(){
-    fx.width = camWrap.clientWidth; fx.height = camWrap.clientHeight;
-    faceCanvas.width = camWrap.clientWidth; faceCanvas.height = camWrap.clientHeight;
-  }
-  window.addEventListener('resize', resizeCanvas);
+function speak(text, priority=false, rate=0.75, pitch=0.4) {
+  if(priority) { speechSynthesis.cancel(); speechQueue = []; isSpeaking = false; }
+  speechQueue.push({ text, rate, pitch });
+  if(!isSpeaking) processQueue();
+}
 
-  // ================= NETWORK CONNECT INTRO =================
-  async function runConnectIntro(){
-    showScreen('connect');
-    netGraph.innerHTML = '';
-    connectStatus.textContent = 'Verbindung wird aufgebaut...';
+function processQueue() {
+  if(speechQueue.length === 0) { isSpeaking = false; return; }
+  isSpeaking = true;
+  const { text, rate, pitch } = speechQueue.shift();
+  const voices = speechSynthesis.getVoices();
+  const idx = parseInt(document.getElementById('voice-select')?.value || 0);
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.voice = voices[idx] || null;
+  utt.rate = rate;
+  utt.pitch = pitch;
+  utt.volume = parseFloat(document.getElementById('speech-volume')?.value || 80) / 100;
+  const cmd = document.getElementById('command-display');
+  if(cmd) { cmd.className = ''; cmd.classList.add('speaking'); cmd.textContent = '🔊 ' + text.slice(0,30) + (text.length>30?'...':''); }
+  utt.onend = () => { isSpeaking = false; processQueue(); if(cmd) { cmd.className=''; cmd.textContent='🎤 SAGEN SIE ETWAS...'; } };
+  utt.onerror = () => { isSpeaking = false; processQueue(); };
+  speechSynthesis.speak(utt);
+}
 
-    const center = document.createElement('div');
-    center.className = 'netNode center show';
-    center.innerHTML = '<svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="none" stroke="#ff1a1a" stroke-width="2"/><circle cx="20" cy="15" r="6" fill="#ff1a1a"/><path d="M8 34 C8 24 32 24 32 34 Z" fill="#ff1a1a"/></svg>DU';
-    netGraph.appendChild(center);
-    await wait(500);
+// ─────────────────────────────────────────────────
+// SPEECH RECOGNITION
+// ─────────────────────────────────────────────────
+let recognition = null;
+let isListening = false;
+let listenTimer = null;
 
-    const positions = [ {x:0.12,y:0.1}, {x:0.85,y:0.08}, {x:0.08,y:0.82}, {x:0.88,y:0.85} ];
-    const rect = netGraph.getBoundingClientRect();
-    const cx = rect.width/2, cy = rect.height/2;
-
-    for(let i=0;i<contacts.length;i++){
-      connectStatus.textContent = `Suche Kontakt ${i+1}/4...`;
-      await wait(500);
-      const nx = positions[i].x*rect.width, ny = positions[i].y*rect.height;
-      const line = document.createElement('div');
-      line.className = 'netLine';
-      const dx = nx-cx, dy = ny-cy;
-      const len = Math.sqrt(dx*dx+dy*dy);
-      const angle = Math.atan2(dy,dx)*180/Math.PI;
-      line.style.width = len+'px'; line.style.left = cx+'px'; line.style.top = cy+'px';
-      line.style.transform = `rotate(${angle}deg)`;
-      netGraph.appendChild(line);
-      requestAnimationFrame(()=>line.classList.add('show'));
-
-      const node = document.createElement('div');
-      node.className = 'netNode';
-      node.style.left = nx+'px'; node.style.top = ny+'px';
-      node.style.transform = 'translate(-50%,-50%) scale(.5)';
-      node.innerHTML = avatarSVG(i) + `<div style="position:absolute;bottom:-16px;font-size:9px;color:#999;white-space:nowrap;">${contacts[i].name}</div>`;
-      netGraph.appendChild(node);
-      await wait(60);
-      node.classList.add('show');
-      connectStatus.textContent = `${contacts[i].name} verbunden. Kamera aktiv.`;
-      await wait(420);
-    }
-    connectStatus.textContent = 'Alle Verbindungen aktiv. Betrete das Netzwerk...';
-    await wait(1100);
-  }
-
-  // ================= AUDIO =================
-  let actx = null, droneGain = null, heartbeatTimer = null, heartbeatRate = 1400;
-  function initAudio(){
-    try{
-      actx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc1 = actx.createOscillator(), osc2 = actx.createOscillator();
-      droneGain = actx.createGain(); droneGain.gain.value = 0.02;
-      osc1.type='sawtooth'; osc1.frequency.value=55;
-      osc2.type='sine'; osc2.frequency.value=58;
-      osc1.connect(droneGain); osc2.connect(droneGain); droneGain.connect(actx.destination);
-      osc1.start(); osc2.start();
-    }catch(e){}
-  }
-  function beat(){
-    if(!actx) return;
-    const t = actx.currentTime;
-    const o = actx.createOscillator(), g = actx.createGain();
-    o.type='sine'; o.frequency.setValueAtTime(60,t); o.frequency.exponentialRampToValueAtTime(30,t+0.15);
-    g.gain.setValueAtTime(0.25,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.2);
-    o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t+0.25);
-  }
-  function startHeartbeat(){ clearInterval(heartbeatTimer); heartbeatTimer = setInterval(()=>{ beat(); setTimeout(beat,260); }, heartbeatRate); }
-  function speedUpHeartbeat(r){ heartbeatRate=r; startHeartbeat(); }
-  function stingerNoise(){
-    if(!actx) return;
-    const bufferSize = actx.sampleRate*0.4;
-    const buffer = actx.createBuffer(1,bufferSize,actx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for(let i=0;i<bufferSize;i++){ data[i]=(Math.random()*2-1)*(1-i/bufferSize); }
-    const src = actx.createBufferSource(); src.buffer=buffer;
-    const g = actx.createGain(); g.gain.value=0.5;
-    src.connect(g); g.connect(actx.destination); src.start();
-  }
-  function staticBurst(){
-    if(!actx) return;
-    const bufferSize = actx.sampleRate*0.15;
-    const buffer = actx.createBuffer(1,bufferSize,actx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for(let i=0;i<bufferSize;i++){ data[i]=(Math.random()*2-1)*0.6; }
-    const src = actx.createBufferSource(); src.buffer=buffer;
-    const g = actx.createGain(); g.gain.value=0.35;
-    src.connect(g); g.connect(actx.destination); src.start();
-  }
-
-  // ================= SPEECH RECOGNITION =================
+function initSpeechRecognition() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  function listenOnce(timeoutMs=6500){
-    return new Promise(resolve => {
-      if(!micEnabled || !SR){ resolve(null); return; }
-      let done=false;
-      const rec = new SR(); rec.lang='de-DE'; rec.interimResults=true; rec.maxAlternatives=1;
-      micIndicator.classList.add('active'); transcriptEl.textContent='';
-      const timeout = setTimeout(()=>{ if(!done){done=true; try{rec.stop();}catch(e){} finish(null);} }, timeoutMs);
-      rec.onresult=(e)=>{
-        let text=''; for(let i=0;i<e.results.length;i++){ text+=e.results[i][0].transcript; }
-        transcriptEl.textContent = text;
-        if(e.results[e.results.length-1].isFinal && !done){
-          done=true; clearTimeout(timeout); try{rec.stop();}catch(err){} finish(text.trim());
+  if(!SR) { showNotification('⚠ Spracherkennung nicht verfügbar'); return; }
+  recognition = new SR();
+  recognition.continuous = false;
+  recognition.interimResults = true;
+  recognition.lang = 'de-DE';
+  recognition.maxAlternatives = 3;
+
+  recognition.onstart = () => {
+    isListening = true;
+    const cmd = document.getElementById('command-display');
+    if(cmd) { cmd.className=''; cmd.classList.add('listening'); cmd.textContent = '🔴 HÖRE ZU...'; }
+    const td = document.getElementById('transcript-display');
+    if(td) { td.className = 'active'; td.textContent = '...'; }
+  };
+
+  recognition.onresult = (e) => {
+    let interim = '';
+    let final = '';
+    for(let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript.toLowerCase().trim();
+      if(e.results[i].isFinal) final = t;
+      else interim = t;
+    }
+    const td = document.getElementById('transcript-display');
+    if(td) td.textContent = interim || final;
+    if(final) processCommand(final);
+  };
+
+  recognition.onerror = (e) => {
+    isListening = false;
+    if(e.error !== 'no-speech') showNotification('Mikrofon-Fehler: ' + e.error);
+  };
+
+  recognition.onend = () => {
+    isListening = false;
+    const cmd = document.getElementById('command-display');
+    if(cmd) { cmd.className=''; cmd.textContent='🎤 SAGEN SIE ETWAS...'; }
+    const td = document.getElementById('transcript-display');
+    if(td) { td.className=''; td.textContent='Leertaste halten zum Sprechen'; }
+  };
+}
+
+function startListening() {
+  if(isListening || isSpeaking) return;
+  try { recognition?.start(); } catch(e) {}
+}
+
+function stopListening() {
+  if(!isListening) return;
+  try { recognition?.stop(); } catch(e) {}
+}
+
+// Spacebar to talk
+document.addEventListener('keydown', (e) => {
+  if(e.code === 'Space' && gameState.running && !e.repeat) {
+    e.preventDefault();
+    startListening();
+  }
+  if(e.code === 'KeyH' && gameState.running) {
+    const hp = document.getElementById('help-panel');
+    if(hp) hp.style.display = hp.style.display === 'none' || hp.style.display === '' ? 'block' : 'none';
+  }
+});
+document.addEventListener('keyup', (e) => {
+  if(e.code === 'Space' && gameState.running) {
+    stopListening();
+  }
+});
+
+// ─────────────────────────────────────────────────
+// WEBCAM
+// ─────────────────────────────────────────────────
+let webcamStream = null;
+let faceDetectInterval = null;
+
+async function initWebcam() {
+  try {
+    webcamStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+    const video = document.getElementById('webcam');
+    video.srcObject = webcamStream;
+    const container = document.getElementById('webcam-container');
+    container.style.display = 'block';
+    applyWebcamEffect();
+    startFaceDetection();
+    return true;
+  } catch(e) {
+    showNotification('📷 Kamera nicht verfügbar');
+    return false;
+  }
+}
+
+function applyWebcamEffect() {
+  const effect = document.getElementById('cam-effect')?.value || 'night';
+  const video = document.getElementById('webcam');
+  if(!video) return;
+  const effects = {
+    night: 'contrast(1.5) brightness(0.6) hue-rotate(100deg) saturate(0.3)',
+    blood: 'contrast(1.3) brightness(0.7) hue-rotate(330deg) saturate(3)',
+    ghost: 'contrast(0.5) brightness(1.5) saturate(0) invert(0.1)',
+    normal: 'contrast(1.2) brightness(0.8)'
+  };
+  video.style.filter = effects[effect] || effects.night;
+}
+
+function startFaceDetection() {
+  let faceVisible = false;
+  let faceTimer = 0;
+  faceDetectInterval = setInterval(() => {
+    if(!gameState.running) return;
+    // Simulated face detection using brightness analysis
+    const video = document.getElementById('webcam');
+    const canvas = document.getElementById('face-canvas');
+    if(!video || !canvas) return;
+    const ctx = canvas.getContext('2d');
+    canvas.width = video.clientWidth;
+    canvas.height = video.clientHeight;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    faceTimer++;
+    // Fake "face detection" overlay that pulses
+    if(faceTimer % 5 === 0) {
+      faceVisible = !faceVisible;
+      if(faceVisible && Math.random() < 0.3) {
+        // Draw fake face box
+        ctx.strokeStyle = 'rgba(255,0,0,0.6)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(40, 20, 120, 110);
+        ctx.fillStyle = 'rgba(255,0,0,0.4)';
+        ctx.font = '8px monospace';
+        ctx.fillText('GESICHT ERKANNT', 42, 18);
+        // Sometimes show scary warning
+        if(Math.random() < 0.1) {
+          ctx.strokeStyle = 'rgba(255,0,0,0.9)';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(40, 20, 120, 110);
+          ctx.fillStyle = 'rgba(255,0,0,0.7)';
+          ctx.fillText('⚠ ZWEITES GESICHT', 42, 140);
+          showNotification('👁 Etwas steht hinter dir...');
         }
-      };
-      rec.onerror=()=>{ if(!done){done=true; clearTimeout(timeout); finish(null);} };
-      rec.onend=()=>{ if(!done){done=true; clearTimeout(timeout); finish(transcriptEl.textContent.trim()||null);} };
-      function finish(val){ micIndicator.classList.remove('active'); resolve(val); }
-      try{ rec.start(); }catch(e){ finish(null); }
-    });
-  }
+      }
+    }
+  }, 1000);
+}
 
-  // ================= EXPANDED DIALOGUE SYSTEM =================
-  const RULES = [
-    [/(wer bist du|was bist du)/, 'Ich bin das, was zwischen den Bildern lebt.'],
-    [/(warum|wieso)/, 'Warum fragen immer alle warum. Es passiert einfach.'],
-    [/(hilfe|stop|aufhören|nein bitte|lass mich|lass uns)/, 'Es ist zu spät zum Bitten.'],
-    [/(nein|niemand|allein)/, 'Gut. Niemand kann euch helfen.'],
-    [/(ja|jemand|freund)/, 'Das wird sie nicht aufhalten.'],
-    [/(angst|erschrocken|gruselig|schiss)/, 'Angst ist ein gutes Zeichen. Es bedeutet, ihr versteht.'],
-    [/(lustig|witzig|haha|lol|scherz)/, 'Lach nur. Ich lache auch — später, mit dir.'],
-    [/(polizei|anruf|hilfe rufen|notruf)/, 'Niemand wird rechtzeitig kommen.'],
-    [/(name|heiß)/, 'Namen sind nur Etiketten. Ich brauche keine.'],
-    [/(echt|real|simulation|nur ein spiel|fake)/, 'Frag dich das noch einmal, wenn das Licht ausgeht.'],
-    [/(licht|dunkel|dunkelheit)/, 'Im Dunkeln sehe ich euch noch besser.'],
-    [/(kamera|video|webcam)/, 'Eure Kameras waren nie wirklich aus.'],
-    [/(tür|fenster|schloss|abschließen)/, 'Türen halten mich nicht auf.'],
-    [/(mama|papa|familie|eltern)/, 'Sie können jetzt nicht helfen.'],
-    [/(geh weg|verschwinde|hau ab)/, 'Ich war zuerst hier.'],
-    [/(hallo|hi|hey|servus)/, 'Hallo. Ich habe auf dich gewartet.'],
-    [/(lena|tom|mira|jonas)/, 'Über sie reden wir gleich noch — was von ihnen übrig ist.'],
-  ];
-  function reactTo(text){
-    if(!text) return null;
-    const t = text.toLowerCase();
-    for(const [re, resp] of RULES){ if(re.test(t)) return resp; }
-    return null;
+function stopWebcam() {
+  if(webcamStream) {
+    webcamStream.getTracks().forEach(t => t.stop());
+    webcamStream = null;
   }
-  const ECHO_TEMPLATES = [
-    t => `"${t}" — ich habe jedes Wort gehört.`,
-    t => `Du sagst "${t}". Interessant, dass gerade jetzt.`,
-    t => `"${t}"... das wird dir nichts nützen.`,
-    t => `Ich wiederhole es dir: "${t}". Merk es dir gut.`,
-    t => `"${t}" — als ob das noch etwas ändern würde.`,
-  ];
-  function fallbackEcho(text){
-    const f = ECHO_TEMPLATES[Math.floor(Math.random()*ECHO_TEMPLATES.length)];
-    return f(text);
-  }
-  async function askAndReact(question, fallbackLine, opts={}){
-    await say(question, opts);
-    const heard = await listenOnce(6500);
-    if(heard) lastHeard = heard;
-    await wait(150);
-    const matched = reactTo(heard);
-    const line = matched || (heard ? fallbackEcho(heard) : fallbackLine);
-    await say(line, { pitch: (opts.pitch??0.5)-0.05, rate: (opts.rate??0.75) });
-    return heard;
-  }
+  if(faceDetectInterval) { clearInterval(faceDetectInterval); faceDetectInterval = null; }
+  const container = document.getElementById('webcam-container');
+  if(container) container.style.display = 'none';
+}
 
-  // ================= DEVICE INFO (client-side, non-invasive) =================
-  function gatherClientInfo(){
-    let tz = 'unbekannt', lang = navigator.language || 'unbekannt', res = `${screen.width}x${screen.height}`;
-    let platform = navigator.platform || 'unbekannt';
-    try{ tz = Intl.DateTimeFormat().resolvedOptions().timeZone || tz; }catch(e){}
-    const time = new Date().toLocaleTimeString('de-DE');
-    return { tz, lang, res, platform, time };
-  }
+// ─────────────────────────────────────────────────
+// MIC VISUALIZER
+// ─────────────────────────────────────────────────
+let micAnalyser = null;
+let micDataArray = null;
+let vizFrame = null;
 
-  // ================= VISUAL FX HELPERS =================
-  async function typeLines(lines, title){
-    if(title) dataPanelTitle.textContent = title;
-    dataLines.innerHTML = '';
-    for(const line of lines){
-      const row = document.createElement('div');
-      row.innerHTML = `<span class="lbl">${line.label}:</span> <span class="val"></span><span class="cursor">&nbsp;</span>`;
-      dataLines.appendChild(row);
-      const valSpan = row.querySelector('.val');
-      for(let i=0;i<=line.value.length;i++){ valSpan.textContent = line.value.slice(0,i); await wait(14); }
-      await wait(150);
+async function initMicVisualizer() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    if(!audioCtx) initAudio();
+    const source = audioCtx.createMediaStreamSource(stream);
+    micAnalyser = audioCtx.createAnalyser();
+    micAnalyser.fftSize = 32;
+    source.connect(micAnalyser);
+    micDataArray = new Uint8Array(micAnalyser.frequencyBinCount);
+    // Create bars
+    const viz = document.getElementById('mic-viz');
+    viz.innerHTML = '';
+    for(let i = 0; i < 16; i++) {
+      const bar = document.createElement('div');
+      bar.className = 'mic-bar';
+      bar.style.height = '3px';
+      viz.appendChild(bar);
+    }
+    animateMicViz();
+  } catch(e) {}
+}
+
+function animateMicViz() {
+  vizFrame = requestAnimationFrame(animateMicViz);
+  if(!micAnalyser || !micDataArray) return;
+  micAnalyser.getByteFrequencyData(micDataArray);
+  const bars = document.querySelectorAll('.mic-bar');
+  bars.forEach((bar, i) => {
+    const v = (micDataArray[i] || 0) / 255;
+    bar.style.height = Math.max(3, v * 30) + 'px';
+    bar.style.background = `hsl(${v*120 - 120}, 100%, 50%)`;
+  });
+}
+
+// ─────────────────────────────────────────────────
+// GAME STATE
+// ─────────────────────────────────────────────────
+const gameState = {
+  running: false,
+  playerName: 'Fremder',
+  difficulty: 'medium',
+  scenario: 'house',
+  sanity: 100,
+  fear: 0,
+  health: 100,
+  chapter: 0,
+  room: 0,
+  inventory: [],
+  score: 0,
+  startTime: null,
+  jumpscares: true,
+  actions: 0,
+  deaths: 0,
+  whispers: 0,
+  foundItems: 0
+};
+
+const ROOMS = {
+  house: [
+    { name: 'Eingang', desc: 'Du stehst in einem morschen Eingangsbereich. Staub bedeckt alles. Eine alte Treppe führt nach oben. Eine Tür geht nach rechts.', items: ['🕯 Kerze', '📜 Notiz'], entities: ['👻'] },
+    { name: 'Wohnzimmer', desc: 'Ein altes Sofa, zerrissen und fleckig. Das Gemälde an der Wand zeigt eine Familie... alle mit leeren Augen. Eine Tür führt in die Küche.', items: ['🔦 Taschenlampe', '🗝 Schlüssel'], entities: ['💀', '🕷️'] },
+    { name: 'Küche', desc: 'Schimmelige Töpfe. Ein tropfender Wasserhahn. Messer auf dem Boden. Blut... oder Rost? Treppen führen in den Keller.', items: ['🍖 Essen', '🔪 Messer'], entities: ['👁'] },
+    { name: 'Keller', desc: 'Absolute Dunkelheit. Du hörst Atmen. Etwas bewegt sich. Eine Kette schwingt. Die Treppe hinter dir knarrt.', items: ['📿 Amulett', '📖 Tagebuch'], entities: ['👹', '🦇'] },
+    { name: 'Schlafzimmer', desc: 'Ein verrottetes Bett. Jemand... oder etwas liegt darin. Die Augen öffnen sich. Du musst hier entkommen!', items: ['💊 Pillen'], entities: ['😈', '👻', '💀'] }
+  ],
+  asylum: [
+    { name: 'Eingang Anstalt', desc: 'Rostiges Eingangstor. Isolierstationen links und rechts. Jemand schreit aus einer Zelle.', items: ['💉 Spritze', '🩺 Notizbuch'], entities: ['😱', '🧠'] },
+    { name: 'Korridor', desc: 'Fluoreszierendes Licht flackert. Rollstühle stehen verstreut. Jemand sitzt regungslos in der Ecke... wartet er auf dich?', items: ['🔦 Licht', '🗝 Zellenschlüssel'], entities: ['👻', '💀'] },
+    { name: 'Operationssaal', desc: 'Ein Operationstisch mit Riemen. Alte chirurgische Instrumente. Das hier wurde vor Jahren verlassen... oder doch nicht?', items: ['🩻 Akte', '⚗️ Chemikalie'], entities: ['👁', '🧬'] },
+    { name: 'Isolierzelle', desc: 'Kratzspuren überall. Zahlen und Symbole an den Wänden. In der Ecke liegt jemand zusammengerollt...', items: ['📖 Notizbuch', '💊 Tabletten'], entities: ['😈', '👹'] },
+    { name: 'Therapieraum', desc: 'EKG-Linien auf Papier. Alle zeigen den Moment des Todes. Du bist die letzte Linie... noch bewegt sie sich.', items: ['🏆 Beweis'], entities: ['👻', '😱', '💀'] }
+  ],
+  forest: [
+    { name: 'Waldrand', desc: 'Der Wald atmet. Äste krachen unter unsichtbaren Füßen. Eine Vogelscheuche starrt dich an... dreht sich ihr Kopf?', items: ['🔦 Lampe', '🗺️ Karte'], entities: ['🦇', '🕷️'] },
+    { name: 'Lichtung', desc: 'Ein Steinkreis. Schwarze Kerzen, noch warm. Hier wurde etwas gerufen. Etwas ist hier geblieben.', items: ['📿 Amulett', '📜 Pergament'], entities: ['👻', '😈'] },
+    { name: 'Alte Hütte', desc: 'Knochen auf dem Dach. Innen: Fotos aller die hier verschwunden sind... einschließlich deines.', items: ['🗝 Schlüssel', '📖 Grimoire'], entities: ['👁', '💀'] },
+    { name: 'Höhle', desc: 'Uralt. Tropfendes Wasser. Aber das sind keine Wassertropfen auf deinem Gesicht. Etwas fliegt über dir.', items: ['💎 Kristall', '⚗️ Elixier'], entities: ['🦇', '👹', '🕷️'] },
+    { name: 'Altar', desc: 'Der älteste Teil des Waldes. Niemand der hierher kam... kehrte zurück. Außer dir. Vielleicht.', items: ['🏆 Ausweg'], entities: ['😈', '👻', '💀', '👁'] }
+  ],
+  underwater: [
+    { name: 'Küstenruine', desc: 'Halbversunkene Strukturen. Algen überall. Das Meer flüstert Dinge in einer Sprache die nie gesprochen wurde.', items: ['🔦 Unterwasserlampe', '🗺️ Seekarte'], entities: ['🐙', '👻'] },
+    { name: 'Versunkenes Schiff', desc: 'Skelette in ihren Kabinen. Gefangen seit Jahrhunderten. Ein Skelett dreht sich zu dir... und winkt.', items: ['🗝 Rostiger Schlüssel', '📜 Bordbuch'], entities: ['💀', '🦑'] },
+    { name: 'Meeresgrund', desc: 'Absolute Dunkelheit außer biolumineszenten Kreaturen die... auf dich zeigen?', items: ['💎 Meeresstein', '🧿 Auge'], entities: ['👁', '🐙', '👻'] },
+    { name: 'Unterwassertempel', desc: 'Gebaut von wem? Für wen? Die Symbole an den Wänden scheinen sich zu bewegen.', items: ['📿 Meeresamulett', '📖 Steintafel'], entities: ['😈', '💀', '🦑'] },
+    { name: 'Das Erwachen', desc: 'Im tiefsten Punkt. Etwas öffnet sich. Etwas Uraltes schaut zurück. Du musst entkommen bevor es aufwacht.', items: ['🏆 Entkommen'], entities: ['👹', '😱', '💀', '👁'] }
+  ]
+};
+
+const WHISPERS = [
+  'Dreh dich nicht um...',
+  'Ich sehe dich...',
+  'Komm zu mir...',
+  'Du kannst nicht entkommen...',
+  'Sie beobachten dich...',
+  'Lauf... oder stirb...',
+  'Ich war immer hier...',
+  'Die Wände atmen...',
+  'Deine Zeit läuft ab...',
+  'Du bist nicht allein...',
+  'Hinter dir...',
+  'Schau in den Spiegel...',
+];
+
+const RESPONSES = {
+  vorwärts: ['geh rein', 'gehe', 'vorwärts', 'weiter', 'eintreten', 'betrete', 'rein', 'geh'],
+  schau: ['schau', 'schaue', 'umschauen', 'ansehen', 'blicke', 'look', 'untersuche'],
+  nimm: ['nimm', 'nehme', 'aufheben', 'nehmen', 'pick', 'greife', 'greif'],
+  suche: ['suche', 'durchsuche', 'such', 'durchforste', 'untersuche', 'inspiziere'],
+  öffne: ['öffne', 'öffnen', 'aufmachen', 'open', 'aufschließen', 'aufbrechen'],
+  laufe: ['laufe', 'renne', 'fliehe', 'lauf', 'rennen', 'flüchte', 'weg'],
+  bete: ['bete', 'beten', 'bitte', 'flehe', 'gebet', 'gott', 'helfe mir'],
+  schrei: ['schrei', 'schreie', 'hilfe', 'help', 'ruf', 'rufe'],
+  zurück: ['zurück', 'rückwärts', 'zurückgehen', 'umkehren', 'retreat'],
+  inventar: ['inventar', 'items', 'gegenstände', 'was habe ich', 'tasche', 'rucksack'],
+  karte: ['karte', 'wo bin ich', 'standort', 'map', 'position', 'navigation'],
+  status: ['status', 'wie geht es', 'leben', 'health', 'statistik', 'stats'],
+  verstecke: ['verstecke', 'versteck', 'verstecken', 'hide', 'verberge'],
+  angriff: ['angriff', 'angreifen', 'angreife', 'kämpfe', 'schlag', 'verteidigen'],
+  ruhe: ['ruhig', 'still', 'leise', 'silence', 'hör auf', 'stop'],
+  licht: ['licht', 'lampe', 'kerze', 'taschenlampe', 'hell', 'leuchte'],
+  tür: ['tür', 'türe', 'door', 'portal', 'eingang', 'ausgang'],
+};
+
+// ─────────────────────────────────────────────────
+// GAME LOGIC
+// ─────────────────────────────────────────────────
+function processCommand(cmd) {
+  if(!gameState.running) return;
+  if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  gameState.actions++;
+  showNotification(`💬 "${cmd}"`);
+
+  let matched = false;
+  for(const [action, keywords] of Object.entries(RESPONSES)) {
+    if(keywords.some(k => cmd.includes(k))) {
+      handleAction(action, cmd);
+      matched = true;
+      break;
     }
   }
-  function setMeter(pct){ meterFill.style.width = pct+'%'; }
-  function bigFlash(){
-    flash.style.transition='none'; flash.style.opacity='0.9';
-    requestAnimationFrame(()=>{ flash.style.transition='opacity .5s ease'; flash.style.opacity='0'; });
+
+  if(!matched) {
+    const confused = [
+      `Ich... verstehe nicht was du sagst, ${gameState.playerName}. Das hier ist nicht gut.`,
+      `Was? Sprich deutlicher... sie können dich hören wenn du zu laut bist.`,
+      `Seltsame Worte. Die Dunkelheit notiert sie.`,
+      `Unbekannte Laute locken sie an...`,
+    ];
+    const txt = confused[Math.floor(Math.random()*confused.length)];
+    updateStory(txt);
+    speak(txt);
+    increaseFear(3);
   }
-  function shakeScreen(){ camWrap.classList.remove('shakeAnim'); void camWrap.offsetWidth; camWrap.classList.add('shakeAnim'); }
-  function noiseSpike(duration=180){ noise.classList.add('noiseSpike'); setTimeout(()=>noise.classList.remove('noiseSpike'), duration); }
-  function spawnGhostFace(){
+}
+
+function handleAction(action, rawCmd) {
+  const rooms = ROOMS[gameState.scenario];
+  const room = rooms[gameState.room];
+
+  switch(action) {
+    case 'vorwärts': {
+      if(gameState.room < rooms.length - 1) {
+        gameState.room++;
+        playDoorSound();
+        const newRoom = rooms[gameState.room];
+        const txt = `Du betrittst: ${newRoom.name}. ${newRoom.desc}`;
+        updateStory(txt);
+        speak(txt);
+        updateLocation(newRoom.name);
+        renderRoom(newRoom);
+        gameState.score += 50;
+        updateMapPlayer();
+        if(gameState.room === rooms.length - 1) {
+          setTimeout(() => triggerFinalRoom(), 2000);
+        }
+        // Possible jumpscare
+        if(gameState.jumpscares && Math.random() < 0.2) {
+          setTimeout(() => triggerJumpScare(), 1500);
+        }
+      } else {
+        const txt = 'Du stehst vor einer Mauer. Es gibt keinen Weg vorwärts. Du musst dich hier stellen.';
+        updateStory(txt);
+        speak(txt);
+      }
+      increaseFear(5);
+      decreaseSanity(2);
+      break;
+    }
+    case 'schau': {
+      const observations = [
+        `Du schaust dich um. ${room.desc} Die Schatten bewegen sich.`,
+        `Deine Augen gewöhnen sich an die Dunkelheit. Du siehst Kratzer an den Wänden. Finger-Kratzer.`,
+        `Etwas ist anders als vorher. War dieses Objekt schon immer da?`,
+        `Du siehst ${room.entities.join(', ')} in den Schatten. Sie sehen dich auch.`,
+      ];
+      const txt = observations[Math.floor(Math.random()*observations.length)];
+      updateStory(txt);
+      speak(txt);
+      increaseFear(3);
+      decreaseSanity(1);
+      break;
+    }
+    case 'nimm': {
+      if(room.items.length > 0 && gameState.inventory.length < 5) {
+        const item = room.items.shift();
+        gameState.inventory.push(item);
+        gameState.foundItems++;
+        updateInventoryDisplay();
+        playPickupSound();
+        const txt = `Du nimmst: ${item}. Es fühlt sich kalt an.`;
+        updateStory(txt);
+        speak(txt);
+        gameState.score += 25;
+        // Item effects
+        if(item.includes('Kerze') || item.includes('Licht') || item.includes('Lampe') || item.includes('Taschenlampe')) {
+          updateStory('Das Licht enthüllt Dinge die verborgen bleiben sollten...');
+          decreaseSanity(5);
+        }
+        if(item.includes('Pillen') || item.includes('Tabletten') || item.includes('Essen') || item.includes('Elixier')) {
+          increaseHealth(20);
+          updateStory('Du nimmst es. Du fühlst dich... etwas besser.');
+        }
+        if(item.includes('Amulett') || item.includes('Kristall') || item.includes('Meeresamulett')) {
+          decreaseFear(20);
+          updateStory('Das Amulett leuchtet schwach. Die Präsenz weicht zurück.');
+        }
+        if(item.includes('Ausweg') || item.includes('Entkommen') || item.includes('Beweis') || item.includes('Auge') || item.includes('Tagebuch') || item.includes('Bordbuch') || item.includes('Grimoire') || item.includes('Steintafel')) {
+          setTimeout(() => triggerWin(), 3000);
+        }
+      } else if(room.items.length === 0) {
+        const txt = 'Hier ist nichts mehr zu nehmen. Oder war hier nie etwas?';
+        updateStory(txt);
+        speak(txt);
+      } else {
+        const txt = 'Dein Inventar ist voll. Lass etwas fallen.';
+        updateStory(txt);
+        speak(txt);
+      }
+      break;
+    }
+    case 'suche': {
+      const discoveries = [
+        `Du suchst und findest: ${room.items[0] || 'nur Albträume'}. Aber du hörst auch Schritte.`,
+        `Hinter dem Schrank findest du alte Fotos. Alle zeigen dasselbe Gesicht. Deins.`,
+        `Im Staub findest du Buchstaben: "H-I-L-F M-I-R". Frisch geschrieben.`,
+        `Du findest eine versteckte Luke. Darunter: absolute Dunkelheit und ein Atemgeräusch.`,
+        `Nichts außer Spinnweben und alten Knochen. Tierisch. Hoffentlich.`,
+      ];
+      const txt = discoveries[Math.floor(Math.random()*discoveries.length)];
+      updateStory(txt);
+      speak(txt);
+      decreaseSanity(3);
+      if(Math.random() < 0.25 && gameState.jumpscares) setTimeout(() => triggerJumpScare(), 2000);
+      break;
+    }
+    case 'öffne': {
+      const outcomes = [
+        `Die Tür öffnet sich quietschend. Ein Geruch von Verwesung strömt heraus.`,
+        `Abgesperrt. Du hörst Kratzen von der anderen Seite.`,
+        `Die Tür öffnet sich... und schließt sich sofort wieder. Von alleine.`,
+        `Es öffnet sich. Innen ist ein Spiegel. Dein Spiegelbild winkt... obwohl du still stehst.`,
+      ];
+      const txt = outcomes[Math.floor(Math.random()*outcomes.length)];
+      playDoorSound();
+      updateStory(txt);
+      speak(txt);
+      increaseFear(8);
+      if(Math.random() < 0.3 && gameState.jumpscares) setTimeout(() => triggerJumpScare(), 1500);
+      break;
+    }
+    case 'laufe': {
+      if(gameState.health < 30 || gameState.sanity < 20) {
+        const txt = `Du rennst! Deine Beine tragen dich... aber etwas ist schneller. Du fühlst einen kalten Griff an deiner Schulter.`;
+        updateStory(txt);
+        speak(txt);
+        decreaseHealth(20);
+        if(gameState.health <= 0) triggerDeath('Du bist in die Dunkelheit gerannt.');
+      } else {
+        const txt = `Du läufst! Die Flure verschwimmen. Du endest... genau da wo du angefangen hast. Das Haus lässt dich nicht gehen.`;
+        updateStory(txt);
+        speak(txt);
+        increaseFear(10);
+        decreaseSanity(5);
+      }
+      break;
+    }
+    case 'bete': {
+      const prayers = [
+        `Dein Gebet hallt durch leere Korridore. Etwas antwortet... aber es ist nicht Gott.`,
+        `"Vater unser..." - Das Flüstern wird lauter. Sie mögen das nicht.`,
+        `Du betest. Das Licht flackert. Für einen Moment... Stille.`,
+        `Dein Gebet beruhigt etwas in dir. Der Verstand stabilisiert sich.`,
+      ];
+      const txt = prayers[Math.floor(Math.random()*prayers.length)];
+      updateStory(txt);
+      speak(txt);
+      increaseSanity(5);
+      decreaseFear(5);
+      break;
+    }
+    case 'schrei': {
+      const screams = [
+        `Du schreist. Das Echo kommt zurück... aber mit einer anderen Stimme.`,
+        `HILFE! Das Haus schluckt deinen Schrei. Niemand hört dich hier draußen.`,
+        `Dein Schrei bricht die Stille. Türen schlagen auf. Sie wissen wo du bist.`,
+        `Du rufst um Hilfe. Im Untergeschoss antwortet jemand... oder etwas.`,
+      ];
+      const txt = screams[Math.floor(Math.random()*screams.length)];
+      updateStory(txt);
+      speak(txt);
+      increaseFear(15);
+      if(gameState.jumpscares && Math.random() < 0.5) setTimeout(() => triggerJumpScare(), 1000);
+      break;
+    }
+    case 'zurück': {
+      if(gameState.room > 0) {
+        gameState.room--;
+        const prevRoom = rooms[gameState.room];
+        const txt = `Du gehst zurück. ${prevRoom.name}. Aber irgendetwas ist anders. Die Möbel... haben sich bewegt.`;
+        playDoorSound();
+        updateStory(txt);
+        speak(txt);
+        renderRoom(prevRoom);
+        updateLocation(prevRoom.name);
+        updateMapPlayer();
+        increaseFear(5);
+      } else {
+        const txt = 'Kein Weg zurück. Die Eingangstür... ist verschwunden.';
+        updateStory(txt);
+        speak(txt);
+        increaseFear(15);
+      }
+      break;
+    }
+    case 'inventar': {
+      if(gameState.inventory.length === 0) {
+        const txt = 'Du hast nichts. Außer der Angst.';
+        updateStory(txt);
+        speak(txt);
+      } else {
+        const txt = `Du trägst: ${gameState.inventory.join(', ')}. Werden sie dir helfen?`;
+        updateStory(txt);
+        speak(txt);
+      }
+      break;
+    }
+    case 'karte': {
+      const txt = `Du bist in: ${room.name}. Räume verbleibend: ${rooms.length - 1 - gameState.room}. Das Ende... ist nah.`;
+      updateStory(txt);
+      speak(txt);
+      document.getElementById('mini-map').style.boxShadow = '0 0 20px rgba(255,0,0,0.8)';
+      setTimeout(() => document.getElementById('mini-map').style.boxShadow = '', 1000);
+      break;
+    }
+    case 'status': {
+      const txt = `Verstand: ${gameState.sanity}%. Angst: ${gameState.fear}%. Leben: ${gameState.health}%. ${gameState.playerName}... du hältst es noch durch.`;
+      updateStory(txt);
+      speak(txt);
+      break;
+    }
+    case 'verstecke': {
+      const hides = [
+        `Du versteckst dich im Schrank. Durch den Spalt siehst du es vorbeigehen. Es hält inne... und schaut direkt auf deinen Spalt.`,
+        `Unter dem Bett. Staubig. Du siehst Beine. Alte, graue Beine. Die sich nicht bewegen.`,
+        `Du presst dich gegen die Wand. Es kommt näher. Du hältst den Atem an.`,
+        `Gut versteckt! Es geht vorbei. Für jetzt.`,
+      ];
+      const txt = hides[Math.floor(Math.random()*hides.length)];
+      updateStory(txt);
+      speak(txt);
+      decreaseFear(5);
+      if(Math.random() < 0.4 && gameState.jumpscares) setTimeout(() => triggerJumpScare(), 3000);
+      break;
+    }
+    case 'angriff': {
+      const attacks = [
+        `Du versuchst anzugreifen! Aber deine Hand geht durch es hindurch. Es ist kalt. Eiskalt.`,
+        `Du schlägst! Es löst sich in Schatten auf... und erscheint hinter dir.`,
+        `Mutig! Aber es lacht. Ein schreckliches Lachen das keinen Körper hat.`,
+        `Du kämpfst! Es nimmt dir ${10 + Math.floor(Math.random()*20)} Lebenspunkte.`,
+      ];
+      const txt = attacks[Math.floor(Math.random()*attacks.length)];
+      updateStory(txt);
+      speak(txt);
+      decreaseHealth(10 + Math.floor(Math.random() * 20));
+      if(gameState.health <= 0) triggerDeath('Das Wesen hat dich überwältigt.');
+      break;
+    }
+    case 'ruhe': {
+      speak('', true); // Cancel speech
+      speechSynthesis.cancel();
+      updateStory('Stille... absolute Stille. Aber in der Stille hörst du es deutlicher.');
+      increaseFear(5);
+      break;
+    }
+    case 'licht': {
+      const hasLight = gameState.inventory.some(i => i.includes('Kerze') || i.includes('Lampe') || i.includes('Taschenlampe') || i.includes('Licht'));
+      if(hasLight) {
+        const txt = 'Du zündest das Licht an. Gesichter in den Schatten... verschwinden. Oder kommen sie näher?';
+        updateStory(txt);
+        speak(txt);
+        document.getElementById('atmosphere').style.background = 'radial-gradient(ellipse at center, #1a0a00 0%, #000 100%)';
+        setTimeout(() => document.getElementById('atmosphere').style.background = '', 3000);
+        decreaseFear(10);
+      } else {
+        const txt = 'Kein Licht. Absolute Dunkelheit umhüllt dich.';
+        updateStory(txt);
+        speak(txt);
+        triggerBlackout();
+      }
+      break;
+    }
+    case 'tür': {
+      handleAction('öffne', rawCmd);
+      break;
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────
+// STATS MANAGEMENT
+// ─────────────────────────────────────────────────
+function increaseFear(amount) {
+  const diff = { easy: 0.5, medium: 1, hard: 1.5, nightmare: 2 };
+  gameState.fear = Math.min(100, gameState.fear + amount * (diff[gameState.difficulty] || 1));
+  updateStats();
+  if(gameState.fear >= 100) triggerDeath('Du bist vor Angst gestorben.');
+  if(gameState.fear > 70) {
+    startHeartbeat(600);
+    addBreathingEffect(gameState.fear);
+  } else if(gameState.fear > 40) {
+    startHeartbeat(1000);
+  }
+}
+
+function decreaseFear(amount) {
+  gameState.fear = Math.max(0, gameState.fear - amount);
+  updateStats();
+  if(gameState.fear < 40) {
+    startHeartbeat(1500);
+    removeBreathingEffect();
+  }
+}
+
+function decreaseSanity(amount) {
+  const diff = { easy: 0.5, medium: 1, hard: 1.5, nightmare: 2.5 };
+  gameState.sanity = Math.max(0, gameState.sanity - amount * (diff[gameState.difficulty] || 1));
+  updateStats();
+  if(gameState.sanity <= 0) triggerDeath('Du hast den Verstand verloren.');
+  if(gameState.sanity < 30) showWhisper();
+  if(gameState.sanity < 20) triggerHallucination();
+}
+
+function increaseSanity(amount) {
+  gameState.sanity = Math.min(100, gameState.sanity + amount);
+  updateStats();
+}
+
+function decreaseHealth(amount) {
+  const diff = { easy: 0.5, medium: 1, hard: 1.5, nightmare: 2 };
+  gameState.health = Math.max(0, gameState.health - amount * (diff[gameState.difficulty] || 1));
+  updateStats();
+  if(gameState.health <= 0) triggerDeath('Du bist gestorben.');
+  createBloodSplash();
+}
+
+function increaseHealth(amount) {
+  gameState.health = Math.min(100, gameState.health + amount);
+  updateStats();
+}
+
+function updateStats() {
+  document.getElementById('sanity-bar').style.width = gameState.sanity + '%';
+  document.getElementById('fear-bar').style.width = gameState.fear + '%';
+  document.getElementById('health-bar').style.width = gameState.health + '%';
+  document.getElementById('sanity-val').textContent = Math.floor(gameState.sanity);
+  document.getElementById('fear-val').textContent = Math.floor(gameState.fear);
+  document.getElementById('health-val').textContent = Math.floor(gameState.health);
+  // Color the sanity bar
+  const sanityBar = document.getElementById('sanity-bar');
+  if(gameState.sanity < 30) sanityBar.style.background = 'linear-gradient(to right, #8b0000, #ff0000)';
+  else if(gameState.sanity < 60) sanityBar.style.background = 'linear-gradient(to right, #8b0000, #ffaa00)';
+  else sanityBar.style.background = 'linear-gradient(to right, #8b0000, #00ff41)';
+}
+
+// ─────────────────────────────────────────────────
+// UI FUNCTIONS
+// ─────────────────────────────────────────────────
+function updateStory(text) {
+  const el = document.getElementById('story-text');
+  if(el) {
+    // Typewriter effect
+    el.textContent = '';
+    let i = 0;
+    const type = () => {
+      if(i < text.length) {
+        el.textContent += text[i];
+        i++;
+        el.scrollTop = el.scrollHeight;
+        const speed = text[i-1] === '.' || text[i-1] === '!' || text[i-1] === '?' ? 80 : 25;
+        setTimeout(type, speed);
+      }
+    };
+    type();
+  }
+}
+
+function updateLocation(name) {
+  const el = document.getElementById('location-display');
+  if(el) el.textContent = '📍 ' + name.toUpperCase();
+}
+
+function updateInventoryDisplay() {
+  for(let i = 0; i < 5; i++) {
+    const slot = document.getElementById('slot-' + i);
+    if(slot) {
+      if(gameState.inventory[i]) {
+        slot.textContent = gameState.inventory[i].split(' ')[0];
+        slot.title = gameState.inventory[i];
+        slot.classList.add('has-item');
+      } else {
+        slot.textContent = '';
+        slot.title = 'Leer';
+        slot.classList.remove('has-item');
+      }
+    }
+  }
+}
+
+function updateMapPlayer() {
+  const player = document.getElementById('map-player');
+  if(!player) return;
+  const positions = [
+    { left: '60px', top: '65px' },
+    { left: '40px', top: '40px' },
+    { left: '85px', top: '40px' },
+    { left: '20px', top: '40px' },
+    { left: '70px', top: '40px' },
+  ];
+  const pos = positions[gameState.room % positions.length];
+  player.style.left = pos.left;
+  player.style.top = pos.top;
+}
+
+function showNotification(msg, duration=3000) {
+  const area = document.getElementById('notification-area');
+  if(!area) return;
+  const notif = document.createElement('div');
+  notif.className = 'notification';
+  notif.textContent = msg;
+  area.appendChild(notif);
+  setTimeout(() => notif.remove(), duration);
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => { s.style.display='none'; s.classList.remove('active'); });
+  const s = document.getElementById(id);
+  if(s) { s.style.display='flex'; s.classList.add('active'); }
+}
+
+// ─────────────────────────────────────────────────
+// HORROR EFFECTS
+// ─────────────────────────────────────────────────
+function renderRoom(room) {
+  const hr = document.getElementById('horror-room');
+  hr.innerHTML = '';
+  // Background gradient based on scenario
+  const bgColors = {
+    house: 'radial-gradient(ellipse at 50% 30%, #1a0505 0%, #0a0000 60%, #000 100%)',
+    asylum: 'radial-gradient(ellipse at 50% 30%, #050010 0%, #000005 60%, #000 100%)',
+    forest: 'radial-gradient(ellipse at 50% 30%, #001a00 0%, #000500 60%, #000 100%)',
+    underwater: 'radial-gradient(ellipse at 50% 30%, #000a1a 0%, #000005 60%, #000 100%)'
+  };
+  document.getElementById('atmosphere').style.background = bgColors[gameState.scenario] || bgColors.house;
+
+  // Entities
+  room.entities.forEach((entity, i) => {
     const el = document.createElement('div');
-    el.className = 'ghostFace';
-    const size = Math.min(camWrap.clientWidth, camWrap.clientHeight) * (0.5+Math.random()*0.3);
-    el.style.width=size+'px'; el.style.height=size+'px';
-    el.style.left=(Math.random()*70+15)+'%'; el.style.top=(Math.random()*60+15)+'%';
-    el.style.transform='translate(-50%,-50%)';
-    el.innerHTML = ghostSVG();
-    camWrap.appendChild(el);
-    requestAnimationFrame(()=>{
-      el.style.transition='opacity 60ms'; el.style.opacity='0.9';
-      setTimeout(()=>{ el.style.transition='opacity 120ms'; el.style.opacity='0'; setTimeout(()=>el.remove(),200); },90);
+    el.className = 'entity';
+    el.textContent = entity;
+    el.style.fontSize = (2 + Math.random() * 5) + 'rem';
+    el.style.left = (10 + Math.random() * 80) + '%';
+    el.style.top = (10 + Math.random() * 60) + '%';
+    el.style.animationDelay = (i * 0.5) + 's';
+    el.style.animation = 'ghost-float ' + (3 + Math.random() * 4) + 's ease-in-out infinite, eye-glow ' + (1 + Math.random() * 2) + 's ease-in-out infinite';
+    el.addEventListener('click', () => {
+      const txt = `Du klickst auf ${entity}. Es starrt zurück.`;
+      updateStory(txt);
+      speak(txt);
+      increaseFear(10);
     });
-  }
-  function ghostSVG(){
-    return `<svg viewBox="0 0 200 200" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-      <defs><radialGradient id="g" cx="50%" cy="40%" r="60%">
-        <stop offset="0%" stop-color="#fff"/><stop offset="60%" stop-color="#ddd"/><stop offset="100%" stop-color="#000"/>
-      </radialGradient></defs>
-      <ellipse cx="100" cy="95" rx="70" ry="90" fill="url(#g)" opacity="0.85"/>
-      <ellipse cx="72" cy="85" rx="12" ry="18" fill="#000"/><ellipse cx="128" cy="85" rx="12" ry="18" fill="#000"/>
-      <path d="M70 140 Q100 120 130 140 Q100 160 70 140 Z" fill="#000"/>
-    </svg>`;
-  }
-  function drawNoiseCanvas(){
-    if(ended) return;
-    ctx.clearRect(0,0,fx.width,fx.height);
-    if(Math.random()<0.04){
-      const y=Math.random()*fx.height, h=4+Math.random()*20;
-      ctx.fillStyle='rgba(255,0,0,0.08)'; ctx.fillRect(0,y,fx.width,h);
+    hr.appendChild(el);
+  });
+
+  // Items scattered
+  room.items.forEach((item, i) => {
+    const el = document.createElement('div');
+    el.style.position = 'absolute';
+    el.style.left = (15 + i * 20) + '%';
+    el.style.bottom = (15 + Math.random() * 20) + '%';
+    el.style.fontSize = '2rem';
+    el.style.cursor = 'pointer';
+    el.style.animation = 'float 4s ease-in-out infinite';
+    el.style.animationDelay = (i * 0.5) + 's';
+    el.textContent = item.split(' ')[0];
+    el.title = item;
+    el.addEventListener('click', () => {
+      speak('Sage "nimm" um es aufzunehmen.');
+      showNotification('💬 Sage "nimm" um es aufzunehmen!');
+    });
+    hr.appendChild(el);
+  });
+
+  // Atmospheric text
+  const quotes = [
+    '"Du kommst nicht lebend heraus..."',
+    '"Sie warten..."',
+    '"Kein Ausweg..."',
+    '"Sieh mich an..."'
+  ];
+  const qt = document.createElement('div');
+  qt.style.position = 'absolute';
+  qt.style.bottom = '30%';
+  qt.style.left = '50%';
+  qt.style.transform = 'translateX(-50%)';
+  qt.style.color = 'rgba(139,0,0,0.2)';
+  qt.style.fontSize = '0.8rem';
+  qt.style.letterSpacing = '3px';
+  qt.style.fontFamily = 'Creepster, cursive';
+  qt.style.pointerEvents = 'none';
+  qt.textContent = quotes[gameState.room % quotes.length];
+  hr.appendChild(qt);
+}
+
+function triggerJumpScare() {
+  if(!gameState.jumpscares) return;
+  const emojis = ['💀', '👻', '😱', '👹', '🧟', '😈', '🕷️', '🦇', '👁', '🫀'];
+  const js = document.getElementById('jump-scare');
+  document.getElementById('jumpscare-emoji').textContent = emojis[Math.floor(Math.random()*emojis.length)];
+  js.classList.add('show');
+  js.style.display = 'flex';
+  playJumpScareSound();
+  increaseFear(20);
+  decreaseSanity(10);
+  setTimeout(closeJumpScare, 800);
+}
+
+function closeJumpScare() {
+  const js = document.getElementById('jump-scare');
+  js.classList.remove('show');
+  js.style.display = 'none';
+}
+
+function createBloodSplash() {
+  const splash = document.createElement('div');
+  splash.className = 'blood-splash';
+  splash.style.left = (Math.random() * 80 + 10) + '%';
+  splash.style.top = (Math.random() * 80 + 10) + '%';
+  document.body.appendChild(splash);
+  setTimeout(() => splash.remove(), 1000);
+}
+
+function showWhisper() {
+  gameState.whispers++;
+  const whisper = WHISPERS[Math.floor(Math.random() * WHISPERS.length)];
+  const el = document.createElement('div');
+  el.className = 'whisper-text';
+  el.textContent = whisper;
+  el.style.left = (Math.random() * 80 + 10) + 'vw';
+  el.style.top = (Math.random() * 80 + 10) + 'vh';
+  document.body.appendChild(el);
+  speak(whisper, false, 0.5, 0.3);
+  setTimeout(() => el.remove(), 5000);
+}
+
+function triggerHallucination() {
+  // Glitch effect
+  document.body.style.animation = 'vhs-glitch 0.3s ease-in-out';
+  setTimeout(() => document.body.style.animation = '', 300);
+  // Random image inversion
+  document.getElementById('game-area').style.filter = 'invert(1)';
+  setTimeout(() => document.getElementById('game-area').style.filter = '', 500);
+  speak('Dein Geist bricht...', false, 0.6, 0.2);
+}
+
+function triggerBlackout() {
+  const overlay = document.getElementById('dark-overlay');
+  overlay.classList.add('blackout');
+  speak('Absolute Dunkelheit. Du kannst nichts sehen.', true);
+  decreaseSanity(10);
+  setTimeout(() => overlay.classList.remove('blackout'), 3000);
+}
+
+function addBreathingEffect(fearLevel) {
+  const overlay = document.getElementById('breathing-overlay');
+  const intensity = fearLevel / 100;
+  overlay.style.boxShadow = `inset 0 0 ${100 * intensity}px rgba(139,0,0,${0.3 * intensity})`;
+}
+
+function removeBreathingEffect() {
+  const overlay = document.getElementById('breathing-overlay');
+  overlay.style.boxShadow = '';
+}
+
+function triggerFinalRoom() {
+  showChapterTitle('DAS ENDE NAHT...');
+  speak(`${gameState.playerName}... du stehst vor dem Kern des Grauens. Finde das finale Objekt und entkommen oder sterbe hier für immer.`, true, 0.7, 0.3);
+  decreaseSanity(20);
+  increaseFear(30);
+  if(gameState.jumpscares) setTimeout(() => triggerJumpScare(), 2000);
+  startHeartbeat(400);
+}
+
+function showChapterTitle(text) {
+  const el = document.getElementById('chapter-title');
+  el.textContent = text;
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 3000);
+}
+
+// ─────────────────────────────────────────────────
+// GAME OVER / WIN
+// ─────────────────────────────────────────────────
+function triggerDeath(reason) {
+  if(!gameState.running) return;
+  gameState.running = false;
+  gameState.deaths++;
+  stopHeartbeat();
+  stopAmbience();
+  playDeathSound();
+  speak(`${gameState.playerName}... ${reason} Du bist tot.`, true, 0.6, 0.2);
+  const elapsed = Math.floor((Date.now() - gameState.startTime) / 1000);
+  document.getElementById('gameover-text').textContent = `${reason}\n\n"${gameState.playerName}" - Mögest du ruhen... wenn sie es zulassen."`;
+  document.getElementById('gameover-stats').innerHTML = `
+    <div class="stat-row"><span>⏱ Überlebt</span><span>${elapsed}s</span></div>
+    <div class="stat-row"><span>🏠 Räume erkundet</span><span>${gameState.room + 1}</span></div>
+    <div class="stat-row"><span>💎 Gefundene Items</span><span>${gameState.foundItems}</span></div>
+    <div class="stat-row"><span>💀 Aktionen</span><span>${gameState.actions}</span></div>
+    <div class="stat-row"><span>👻 Flüstern gehört</span><span>${gameState.whispers}</span></div>
+    <div class="stat-row"><span>🧠 Letzter Verstand</span><span>${Math.floor(gameState.sanity)}%</span></div>
+    <div class="stat-row"><span>⭐ Score</span><span>${gameState.score}</span></div>
+  `;
+  setTimeout(() => showScreen('gameover-screen'), 2000);
+}
+
+function triggerWin() {
+  if(!gameState.running) return;
+  gameState.running = false;
+  stopHeartbeat();
+  stopAmbience();
+  // Victory tones
+  [440, 550, 660, 880].forEach((f, i) => playTone(f, 'sine', 0.5, 0.3, i * 0.3));
+  speak(`${gameState.playerName}... du hast es geschafft. Irgendwie bist du dem Grauen entkommen. Heute. Es wird zurückkehren.`, true, 0.8, 0.5);
+  const elapsed = Math.floor((Date.now() - gameState.startTime) / 1000);
+  const finalScore = gameState.score + gameState.sanity * 10 + (100 - gameState.fear) * 5 + gameState.health * 8;
+  document.getElementById('win-text').textContent = `Du hast "${gameState.scenario}" überlebt!\n"${gameState.playerName}" tritt ins Licht... zitternd, aber lebend.`;
+  document.getElementById('win-stats').innerHTML = `
+    <div class="stat-row"><span>⏱ Zeit</span><span>${elapsed}s</span></div>
+    <div class="stat-row"><span>🏠 Räume</span><span>${ROOMS[gameState.scenario].length}</span></div>
+    <div class="stat-row"><span>💎 Items</span><span>${gameState.foundItems}</span></div>
+    <div class="stat-row"><span>🧠 Verstand</span><span>${Math.floor(gameState.sanity)}%</span></div>
+    <div class="stat-row"><span>❤️ Leben</span><span>${Math.floor(gameState.health)}%</span></div>
+    <div class="stat-row"><span>⭐ Finaler Score</span><span>${finalScore}</span></div>
+  `;
+  setTimeout(() => showScreen('win-screen'), 2000);
+}
+
+// ─────────────────────────────────────────────────
+// INITIALIZATION
+// ─────────────────────────────────────────────────
+async function requestPermissions() {
+  showScreen('menu-screen');
+  await populateVoiceList();
+  initSpeechRecognition();
+}
+
+async function startGame() {
+  const name = document.getElementById('player-name').value.trim();
+  if(!name) { alert('Bitte gib deinen Namen ein!'); return; }
+
+  // Initialize audio FIRST (user gesture required)
+  initAudio();
+  if(audioCtx && audioCtx.state === 'suspended') await audioCtx.resume();
+
+  gameState.playerName = name;
+  gameState.difficulty = document.getElementById('difficulty').value;
+  gameState.scenario = document.getElementById('scenario').value;
+  gameState.jumpscares = document.getElementById('jumpscares').value === 'yes';
+  gameState.sanity = 100;
+  gameState.fear = 0;
+  gameState.health = 100;
+  gameState.chapter = 0;
+  gameState.room = 0;
+  gameState.inventory = [];
+  gameState.score = 0;
+  gameState.startTime = Date.now();
+  gameState.actions = 0;
+  gameState.whispers = 0;
+  gameState.foundItems = 0;
+  gameState.running = true;
+
+  // Music volume
+  const mvol = parseFloat(document.getElementById('music-volume').value) / 100;
+  setMusicVolume(mvol * 0.1);
+
+  showScreen('game-screen');
+  document.getElementById('help-panel').style.display = 'none';
+  updateInventoryDisplay();
+  updateStats();
+  updateMapPlayer();
+
+  // Apply webcam effect
+  applyWebcamEffect();
+  await initWebcam();
+  await initMicVisualizer();
+
+  // Start ambience
+  playCreepyAmbience();
+  startHeartbeat(1500);
+
+  // Init room
+  const firstRoom = ROOMS[gameState.scenario][0];
+  updateLocation(firstRoom.name);
+  renderRoom(firstRoom);
+
+  // Show chapter title
+  showChapterTitle('KAPITEL I: DER ANFANG');
+
+  // Initial story
+  setTimeout(() => {
+    const scenarios = {
+      house: `Das verlassene Haus steht vor dir. Die Eingangstür knarrt im Wind. Du weißt du solltest nicht eintreten, ${name}... aber du hast keine Wahl mehr.`,
+      asylum: `Die psychiatrische Anstalt wurde vor 30 Jahren geschlossen. Offiziell. Du stehst am Eingang und hörst Schreie. ${name}, es gibt keinen Weg zurück.`,
+      forest: `Der verfluchte Wald von Schwarztal. Kein Vogel singt. Kein Wind weht. Nur du, ${name}, und das Knacken unter unsichtbaren Füßen.`,
+      underwater: `Die versunkene Stadt R'lyeth. Du tauchst tiefer als je ein Mensch zuvor. Das Licht reicht nicht. ${name}... etwas schaut von unten herauf.`
+    };
+    const txt = scenarios[gameState.scenario];
+    updateStory(txt);
+    speak(txt, true, 0.7, 0.4);
+  }, 1000);
+
+  // Show help hint
+  setTimeout(() => { showNotification('❓ Drücke H für Sprachbefehle'); }, 5000);
+  setTimeout(() => { showNotification('🎤 Leertaste halten um zu sprechen!'); }, 7000);
+  setTimeout(() => { showNotification('📷 Kamera überwacht dich...'); }, 10000);
+
+  // Periodic whispers based on sanity
+  setInterval(() => {
+    if(!gameState.running) return;
+    if(gameState.sanity < 70 && Math.random() < 0.3) showWhisper();
+    if(gameState.fear > 60 && Math.random() < 0.2) {
+      const w = WHISPERS[Math.floor(Math.random()*WHISPERS.length)];
+      speak(w, false, 0.5, 0.3);
     }
-    requestAnimationFrame(drawNoiseCanvas);
-  }
-  function updateClock(){
-    const s = Math.floor((Date.now()-startTime)/1000);
-    const hh=String(Math.floor(s/3600)).padStart(2,'0'), mm=String(Math.floor((s%3600)/60)).padStart(2,'0'), ss=String(s%60).padStart(2,'0');
-    clock.textContent = `${hh}:${mm}:${ss}`;
-  }
+  }, 15000);
 
-  // ================= FACE TRACKING =================
-  let faceDetector = null, faceTrackingSupported = false, faceLoopRunning = false, lastBox = null, simT = 0;
-  const faceLabel = document.createElement('div');
-  faceLabel.id = 'faceLabel'; faceLabel.textContent = 'GESICHT ERKANNT';
+  // Passive fear increase
+  setInterval(() => {
+    if(!gameState.running) return;
+    increaseFear(0.5);
+    decreaseSanity(0.2);
+  }, 5000);
 
-  function initFaceTracking(){
-    if('FaceDetector' in window){
-      try{ faceDetector = new FaceDetector({ fastMode:true, maxDetectedFaces:1 }); faceTrackingSupported = true; }
-      catch(e){ faceTrackingSupported = false; }
+  // VHS counter
+  setInterval(() => {
+    if(!gameState.running) return;
+    const elapsed = Math.floor((Date.now() - gameState.startTime) / 1000);
+    const h = String(Math.floor(elapsed/3600)).padStart(2,'0');
+    const m = String(Math.floor((elapsed%3600)/60)).padStart(2,'0');
+    const s = String(elapsed%60).padStart(2,'0');
+    document.getElementById('vhs-counter').textContent = `${h}:${m}:${s}`;
+  }, 1000);
+
+  // Random events
+  setInterval(() => {
+    if(!gameState.running) return;
+    const events = [
+      () => { showNotification('🚪 Eine Tür schlägt irgendwo zu...'); playDoorSound(); },
+      () => { showNotification('💡 Das Licht flackert...'); document.getElementById('atmosphere').style.opacity='0.3'; setTimeout(()=>document.getElementById('atmosphere').style.opacity='1',200); },
+      () => { showNotification('👣 Schritte...'); playKnock(); },
+      () => { if(gameState.jumpscares && Math.random()<0.15) triggerJumpScare(); },
+      () => { showNotification('🌬 Etwas atmet in deinem Nacken...'); increaseFear(5); },
+      () => { showWhisper(); },
+    ];
+    const e = events[Math.floor(Math.random()*events.length)];
+    e();
+  }, 20000 + Math.random()*10000);
+}
+
+function restartGame() {
+  stopWebcam();
+  stopAmbience();
+  stopHeartbeat();
+  if(vizFrame) cancelAnimationFrame(vizFrame);
+  gameState.running = false;
+  showScreen('menu-screen');
+  populateVoiceList();
+}
+
+// ─────────────────────────────────────────────────
+// ATMOSPHERIC PARTICLES
+// ─────────────────────────────────────────────────
+function createParticles() {
+  const container = document.getElementById('particle-container');
+  for(let i = 0; i < 30; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.top = Math.random() * 100 + '%';
+    p.style.animationDuration = (2 + Math.random() * 4) + 's';
+    p.style.animationDelay = Math.random() * 4 + 's';
+    p.style.opacity = Math.random() * 0.5;
+    p.style.width = p.style.height = (1 + Math.random() * 4) + 'px';
+    const colors = ['#8b0000', '#ff0000', '#330000', '#660000'];
+    p.style.background = colors[Math.floor(Math.random()*colors.length)];
+    container.appendChild(p);
+  }
+}
+
+// ─────────────────────────────────────────────────
+// BLOOD DROPS
+// ─────────────────────────────────────────────────
+function createBloodDrops() {
+  const container = document.getElementById('blood-container');
+  for(let i = 0; i < 20; i++) {
+    const d = document.createElement('div');
+    d.className = 'blood-drop';
+    d.style.setProperty('--delay', (Math.random() * 5) + 's');
+    d.style.height = '0';
+    container.appendChild(d);
+  }
+}
+
+// ─────────────────────────────────────────────────
+// LOADING SEQUENCE
+// ─────────────────────────────────────────────────
+const loadingMessages = [
+  'LADE ALBTRÄUME...',
+  'KOMPILIERE GRAUEN...',
+  'INITIALISIERE DUNKELHEIT...',
+  'LADE STIMMEN AUS DEM JENSEITS...',
+  'BEREITE SCHRECKEN VOR...',
+  'AKTIVIERE ÜBERWACHUNG...',
+  'KALIBRIERE ANGSTPARAMETER...',
+  'LÄDT... ⚠ FEHLER... KORRIGIERE...',
+  'VERBINDE MIT DEM JENSEITS...',
+  'BEREIT. GOTT STEH DIR BEI.',
+];
+
+function runLoadingScreen() {
+  createParticles();
+  createBloodDrops();
+  let progress = 0;
+  let msgIdx = 0;
+  const bar = document.getElementById('loading-bar');
+  const txt = document.getElementById('loading-text');
+
+  const interval = setInterval(() => {
+    progress += Math.random() * 8 + 2;
+    if(progress >= 100) {
+      progress = 100;
+      clearInterval(interval);
+      bar.style.width = '100%';
+      txt.textContent = 'BEREIT. WENN DU ES WAGST.';
+      setTimeout(() => showScreen('perm-screen'), 1500);
+    } else {
+      bar.style.width = progress + '%';
+      if(progress > msgIdx * 10) {
+        txt.textContent = loadingMessages[Math.min(msgIdx, loadingMessages.length-1)];
+        msgIdx++;
+      }
     }
-    camWrap.appendChild(faceLabel);
-    faceLoopRunning = true;
-    faceLoop();
+  }, 150);
+}
+
+// ─────────────────────────────────────────────────
+// INIT ON PAGE LOAD
+// ─────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  runLoadingScreen();
+  // Prevent right click for immersion
+  document.addEventListener('contextmenu', e => e.preventDefault());
+});
+
+// Touch support for mobile
+document.addEventListener('touchstart', (e) => {
+  if(gameState.running) {
+    e.preventDefault();
+    startListening();
   }
-  async function faceLoop(){
-    while(faceLoopRunning && !ended){
-      try{
-        if(faceTrackingSupported && video.readyState >= 2){
-          const faces = await faceDetector.detect(video);
-          lastBox = (faces && faces.length) ? mapBoxToScreen(faces[0].boundingBox) : null;
-        } else if(!faceTrackingSupported){
-          lastBox = simulatedBox();
-        }
-      }catch(e){ lastBox = simulatedBox(); }
-      drawFaceReticle(lastBox);
-      await wait(faceTrackingSupported ? 220 : 60);
-    }
+}, { passive: false });
+document.addEventListener('touchend', (e) => {
+  if(gameState.running) {
+    e.preventDefault();
+    stopListening();
   }
-  function mapBoxToScreen(box){
-    const vw = video.videoWidth || 640, vh = video.videoHeight || 480;
-    const rw = camWrap.clientWidth, rh = camWrap.clientHeight;
-    const scale = Math.max(rw/vw, rh/vh);
-    const offX = (rw - vw*scale)/2, offY = (rh - vh*scale)/2;
-    let sx = box.x*scale + offX, sy = box.y*scale + offY;
-    let sw = box.width*scale, sh = box.height*scale;
-    sx = rw - sx - sw;
-    return {x:sx, y:sy, w:sw, h:sh};
+}, { passive: false });
+
+// Visibility change - if user tabs out
+document.addEventListener('visibilitychange', () => {
+  if(document.hidden && gameState.running) {
+    speak('Du kannst nicht entkommen... ich bin auch dort wo du hingehst.', true, 0.7, 0.3);
+    increaseFear(20);
   }
-  function simulatedBox(){
-    simT += 0.05;
-    const rw = camWrap.clientWidth, rh = camWrap.clientHeight;
-    const baseW = Math.min(rw,rh)*0.32, baseH = baseW*1.25;
-    const jitterX = Math.sin(simT*1.3)*8, jitterY = Math.cos(simT*1.7)*6;
-    const breathe = 1 + Math.sin(simT*0.8)*0.03;
-    return { x: rw/2-(baseW*breathe)/2+jitterX, y: rh/2-(baseH*breathe)/2+jitterY-rh*0.04, w: baseW*breathe, h: baseH*breathe };
-  }
-  function drawFaceReticle(box){
-    fctx.clearRect(0,0,faceCanvas.width,faceCanvas.height);
-    if(!box){ faceLabel.classList.remove('show'); return; }
-    const {x,y,w,h} = box;
-    const col = faceTrackingSupported ? '#2fff6a' : '#ffcc33';
-    fctx.strokeStyle = col; fctx.lineWidth = 2; fctx.shadowColor = col; fctx.shadowBlur = 6;
-    const cl = Math.min(24, w*0.25);
-    fctx.beginPath();
-    fctx.moveTo(x,y+cl); fctx.lineTo(x,y); fctx.lineTo(x+cl,y);
-    fctx.moveTo(x+w-cl,y); fctx.lineTo(x+w,y); fctx.lineTo(x+w,y+cl);
-    fctx.moveTo(x+w,y+h-cl); fctx.lineTo(x+w,y+h); fctx.lineTo(x+w-cl,y+h);
-    fctx.moveTo(x+cl,y+h); fctx.lineTo(x,y+h); fctx.lineTo(x,y+h-cl);
-    fctx.stroke();
-    faceLabel.style.left = x+'px'; faceLabel.style.top = (y-16)+'px'; faceLabel.style.color = col;
-    faceLabel.textContent = faceTrackingSupported ? 'GESICHT ERKANNT' : 'SCAN (SIMULIERT)';
-    faceLabel.classList.add('show');
-  }
-
-  // ================= GAME START =================
-  function startGame(){
-    showScreen('game');
-    renderCallStrip();
-    resizeCanvas();
-    initAudio();
-    startTime = Date.now();
-    clockInterval = setInterval(updateClock, 1000);
-    startHeartbeat();
-    requestAnimationFrame(drawNoiseCanvas);
-    initFaceTracking();
-    tileLoopRunning = true; tileLoop();
-    runStory();
-  }
-
-  // ================= STORY SEQUENCE =================
-  async function runStory(){
-    await wait(900);
-    await say('Verbindung hergestellt.', {pitch:0.5,rate:0.8});
-    setMeter(4); await wait(500);
-
-    // roll call — the 4 contacts talk first, like a group call starting
-    await contactSay(0, 'Hallo? Läuft das überhaupt...?');
-    await wait(200);
-    await contactSay(1, 'Ich seh bei mir nur Rauschen.');
-    await wait(200);
-    await contactSay(2, 'Wer hat uns eigentlich alle eingeladen?');
-    await wait(200);
-    await contactSay(3, 'Bestimmt irgendein Streich.');
-    await wait(500);
-
-    await say('Ich kann euch alle sehen.', {pitch:0.45,rate:0.72});
-    setMeter(10); await wait(700);
-    await say('Und ich kenne einiges über dich.', {pitch:0.45,rate:0.72});
-    setMeter(14); await wait(700);
-
-    // Name
-    playerName = await askAndReact('Wie heißt du?', 'Schweigen. Auch gut. Ich finde es selbst heraus.', {pitch:0.6,rate:0.85}) || playerName;
-    setMeter(19);
-
-    const info = gatherClientInfo();
-    dataPanel.classList.add('show');
-    await typeLines([
-      {label:'IP-Trace', value:'92.xxx.xx.xx (simuliert)'},
-      {label:'Zielname', value: playerName || 'unbekannt'},
-      {label:'Zeitzone', value: info.tz},
-      {label:'Sprache', value: info.lang},
-      {label:'Auflösung', value: info.res},
-      {label:'System', value: info.platform},
-      {label:'Ortszeit', value: info.time},
-      {label:'Verbundene Kontakte', value:'4 aktiv'},
-    ], 'Analysiere Ziel');
-    await wait(1300);
-    dataPanel.classList.remove('show');
-
-    // --- Kontakt 1: Lena korrumpiert ---
-    noiseSpike(140); shakeScreen();
-    setContactStatus(0, 'GESTÖRT', 'corrupt');
-    await contactSay(0, 'Was ist... [KNISTERN] ...los mit meinem Bild?');
-    await say('Lena ist auch hier. Sie weiß es nur noch nicht.', {pitch:0.45,rate:0.75});
-    setMeter(27);
-    await wait(900);
-
-    await askAndReact('Bist du allein in deinem Raum?', 'Interessant. Ich glaube dir nicht ganz.', {pitch:0.55,rate:0.85});
-    setMeter(34);
-    speedUpHeartbeat(1150);
-
-    // --- Kontakt 2: Tom offline ---
-    await wait(700);
-    noiseSpike(160); staticBurst();
-    await contactSay(1, 'Ich glaub ich häng mich a—');
-    setContactStatus(1, 'OFFLINE', 'offline');
-    await say('Tom antwortet nicht mehr.', {pitch:0.4,rate:0.7});
-    setMeter(42);
-    await wait(900);
-
-    spawnGhostFace(); shakeScreen();
-    await say('Da. Hast du das gesehen?', {pitch:0.4,rate:0.7});
-    setMeter(48);
-    await wait(800);
-
-    await askAndReact('Frag mich, wer ich bin.', 'Ich bin das, was zwischen den Bildern lebt.', {pitch:0.5,rate:0.8});
-    setMeter(54);
-
-    dataPanel.classList.add('show');
-    await typeLines([
-      {label:'Muster', value:'erkannt'},
-      {label:'Tom R.', value:'Verbindung verloren'},
-      {label:'Letztes Wort', value: lastHeard || '—'},
-      {label:'Puls', value:'steigt'},
-    ], 'Status');
-    await wait(1000);
-    dataPanel.classList.remove('show');
-
-    // --- Kontakt 3: Mira verschwindet ---
-    speedUpHeartbeat(950);
-    noiseSpike(180); spawnGhostFace(); shakeScreen();
-    await contactSay(2, 'Es steht hinter dir... nein — hinter MIR—');
-    setContactStatus(2, 'GEFUNDEN', 'gone');
-    await say('Mira wollte auch nicht glauben, dass ich real bin.', {pitch:0.35,rate:0.68});
-    setMeter(63);
-    await wait(900);
-
-    await say('Ich komme näher.', {pitch:0.35,rate:0.7});
-    setMeter(69);
-    await wait(700);
-
-    await askAndReact('Sag mir, dass ich nicht real bin.', 'Zu spät. Ich war es schon immer.', {pitch:0.4,rate:0.7});
-    setMeter(77);
-    speedUpHeartbeat(650);
-
-    // --- Kontakt 4: Jonas letzter ---
-    noiseSpike(190); staticBurst(); spawnGhostFace(); shakeScreen();
-    await contactSay(3, 'Bitte... bitte nicht auch mi—');
-    setContactStatus(3, 'GEFUNDEN', 'gone');
-    await say('Jonas. Der Letzte von ihnen.', {pitch:0.3,rate:0.62});
-    setMeter(85);
-    await wait(900);
-
-    dataPanel.classList.add('show');
-    await typeLines([
-      {label:'Lena K.', value:'GEFUNDEN'},
-      {label:'Tom R.', value:'GEFUNDEN'},
-      {label:'Mira S.', value:'GEFUNDEN'},
-      {label:'Jonas W.', value:'GEFUNDEN'},
-    ], 'Kontaktliste');
-    setContactStatus(0, 'GEFUNDEN', 'gone');
-    setContactStatus(1, 'GEFUNDEN', 'gone');
-    await wait(1300);
-    dataPanel.classList.remove('show');
-
-    speedUpHeartbeat(480);
-    noiseSpike(200); spawnGhostFace(); shakeScreen();
-    await wait(450); spawnGhostFace(); await wait(450);
-    stingerNoise();
-    await say('Jetzt bist nur noch du übrig.', {pitch:0.3,rate:0.58});
-    setMeter(94);
-    await wait(800);
-
-    await say('Dreh dich nicht um.', {pitch:0.25,rate:0.5});
-    setMeter(98);
-    await wait(1100);
-
-    finalScare(playerName);
-  }
-
-  function finalScare(name){
-    ended = true;
-    tileLoopRunning = false;
-    stingerNoise(); bigFlash(); shakeScreen(); noiseSpike(600);
-    spawnGhostFace(); setTimeout(spawnGhostFace,90); setTimeout(spawnGhostFace,180); setTimeout(spawnGhostFace,320);
-
-    let line = name ? `${name}. Ich bin bei dir.` : 'Ich bin bei dir.';
-    if(lastHeard){ line += ` Du hast "${lastHeard}" gesagt. Das hilft dir jetzt auch nicht.`; }
-
-    if(voiceEnabled){
-      const u = new SpeechSynthesisUtterance(line);
-      u.lang='de-DE'; u.pitch=0.2; u.rate=0.5; u.volume=1;
-      speechSynthesis.cancel(); speechSynthesis.speak(u);
-    }
-
-    finalContacts.innerHTML = contacts.map((c,i)=>`<div class="avatar">${avatarSVG(i)}</div>`).join('');
-
-    setTimeout(()=>{
-      finalTitle.textContent = 'SIE HAT EUCH ALLE GEFUNDEN';
-      finalSub.textContent = 'Take This Lollipop — Hommage · fiktive Charaktere · rein fiktives Erlebnis';
-      finalMsg.classList.add('show');
-      clearInterval(clockInterval); clearInterval(heartbeatTimer);
-      if(stream){ stream.getTracks().forEach(t=>t.stop()); }
-    }, 600);
-  }
-
-})();
+});
 </script>
 </body>
 </html>
