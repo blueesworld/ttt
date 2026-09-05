@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIE BEOBACHTET DICH</title>
+<style>
+  :root{
+    --red:#b0141a;
+    --red-bright:#ff1a1a;
+    --black:#050505;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{
+    width:100%;height:100%;
+    background:var(--black);
+    color:#eee;
+    font-family:'Courier New', monospace;
+    overflow:hidden;
+  }
+  #app{
+    position:relative;
+    width:100vw;height:100vh;
+    display:flex;align-items:center;justify-content:center;
+  }
+
+  /* ---------- SCREENS ---------- */
+  .screen{
+    position:absolute;
+    inset:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:24px;
+    text-align:center;
+    padding:24px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity 1.2s ease;
+  }
+  .screen.active{opacity:1;pointer-events:all;}
+
+  h1{
+    font-size:clamp(28px,6vw,56px);
+    letter-spacing:4px;
+    color:var(--red-bright);
+    text-shadow:0 0 20px var(--red), 0 0 40px var(--red);
+    animation:flicker 3.5s infinite;
+  }
+  p{font-size:clamp(14px,2.2vw,18px);color:#ccc;max-width:560px;line-height:1.5;}
+  small{color:#777;font-size:12px;}
+
+  @keyframes flicker{
+    0%,19%,21%,23%,25%,54%,56%,100%{opacity:1;}
+    20%,24%,55%{opacity:0.4;}
+  }
+
+  button{
+    background:transparent;
+    border:2px solid var(--red);
+    color:var(--red-bright);
+    font-family:inherit;
+    font-size:16px;
+    letter-spacing:2px;
+    padding:14px 32px;
+    cursor:pointer;
+    transition:.25s;
+    text-transform:uppercase;
+  }
+  button:hover{
+    background:var(--red);
+    color:#000;
+    box-shadow:0 0 25px var(--red);
+  }
+  button:disabled{opacity:.3;cursor:not-allowed;}
+
+  /* ---------- CONSENT ---------- */
+  #consentBox{
+    border:1px solid #333;
+    background:rgba(20,0,0,.4);
+    padding:18px 22px;
+    max-width:520px;
+    font-size:13px;
+    color:#999;
+    line-height:1.6;
+  }
+
+  /* ---------- GAME VIEW ---------- */
+  #gameScreen{inset:0;padding:0;}
+  #camWrap{
+    position:relative;
+    width:100vw;height:100vh;
+    overflow:hidden;
+    background:#000;
+  }
+  video{
+    position:absolute;inset:0;
+    width:100%;height:100%;
+    object-fit:cover;
+    filter:grayscale(0.35) contrast(1.25) brightness(0.55) saturate(1.1);
+    transform:scaleX(-1);
+  }
+  canvas#fx{
+    position:absolute;inset:0;
+    width:100%;height:100%;
+    mix-blend-mode:overlay;
+    pointer-events:none;
+  }
+  #vignette{
+    position:absolute;inset:0;
+    pointer-events:none;
+    background:radial-gradient(ellipse at center, rgba(0,0,0,0) 35%, rgba(0,0,0,0.85) 100%);
+  }
+  #scanlines{
+    position:absolute;inset:0;
+    pointer-events:none;
+    background:repeating-linear-gradient(
+      to bottom, rgba(0,0,0,0.15) 0px, rgba(0,0,0,0.15) 1px,
+      transparent 2px, transparent 3px
+    );
+    mix-blend-mode:multiply;
+    opacity:.6;
+  }
+  #noise{
+    position:absolute;inset:0;
+    pointer-events:none;
+    opacity:0;
+    background-image:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnPjxmaWx0ZXIgaWQ9J24nPjxmZVR1cmJ1bGVuY2UgdHlwZT0nZnJhY3RhbE5vaXNlJyBiYXNlRnJlcXVlbmN5PScwLjknIG51bU9jdGF2ZXM9JzInIHN0aXRjaFRpbGVzPSdzdGl0Y2gnLz48L2ZpbHRlcj48cmVjdCB3aWR0aD0nMTAwJScgaGVpZ2h0PScxMDAlJyBmaWx0ZXI9J3VybCgjbiknIG9wYWNpdHk9JzAuNCcvPjwvc3ZnPg==");
+    background-size:180px 180px;
+    animation:noiseMove .2s steps(2) infinite;
+  }
+  @keyframes noiseMove{
+    0%{transform:translate(0,0);}
+    100%{transform:translate(-8px,4px);}
+  }
+  .noiseSpike{opacity:.85 !important;}
+
+  #hudTop{
+    position:absolute;top:18px;left:18px;right:18px;
+    display:flex;justify-content:space-between;
+    font-size:12px;letter-spacing:2px;color:#e33;
+    text-shadow:0 0 6px #900;
+    z-index:5;
+  }
+  #hudTop span.dot{
+    display:inline-block;width:8px;height:8px;border-radius:50%;
+    background:#e33;margin-right:6px;
+    animation:pulse 1s infinite;
+    box-shadow:0 0 8px #e33;
+  }
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.2;}}
+
+  #status{
+    position:absolute;bottom:26px;left:0;right:0;
+    text-align:center;z-index:5;
+    font-size:13px;letter-spacing:2px;color:#eee;
+    text-shadow:0 0 10px #000, 0 0 4px #900;
+    min-height:20px;
+  }
+
+  #meterWrap{
+    position:absolute;top:50px;left:18px;
+    z-index:5;width:160px;
+  }
+  #meterLabel{font-size:10px;color:#e33;letter-spacing:2px;margin-bottom:4px;}
+  #meterBar{
+    width:100%;height:6px;
+    background:#200;
+    border:1px solid #500;
+    overflow:hidden;
+  }
+  #meterFill{
+    height:100%;width:0%;
+    background:linear-gradient(90deg,#500,#f00);
+    transition:width 1s linear;
+    box-shadow:0 0 10px #f00;
+  }
+
+  /* faces that flash on screen */
+  .ghostFace{
+    position:absolute;
+    z-index:6;
+    pointer-events:none;
+    opacity:0;
+    filter:contrast(1.4) brightness(0.7) saturate(0);
+    mix-blend-mode:screen;
+  }
+
+  /* fake typed "profile" panel */
+  #dataPanel{
+    position:absolute;
+    z-index:5;
+    top:50%;left:50%;
+    transform:translate(-50%,-50%);
+    background:rgba(5,0,0,.88);
+    border:1px solid var(--red);
+    padding:24px 28px;
+    width:min(420px,86vw);
+    opacity:0;
+    transition:opacity .6s;
+    box-shadow:0 0 40px rgba(255,0,0,.3);
+  }
+  #dataPanel.show{opacity:1;}
+  #dataPanel h3{
+    color:var(--red-bright);font-size:14px;letter-spacing:3px;margin-bottom:14px;
+    text-transform:uppercase;
+  }
+  #dataLines{font-size:12px;color:#c99;line-height:2;text-align:left;min-height:110px;}
+  #dataLines .lbl{color:#888;}
+  .cursor{display:inline-block;width:7px;background:#f00;animation:blink 1s steps(1) infinite;}
+  @keyframes blink{50%{opacity:0;}}
+
+  #finalMsg{
+    position:absolute;inset:0;z-index:8;
+    background:#000;
+    display:flex;align-items:center;justify-content:center;
+    flex-direction:column;gap:16px;
+    opacity:0;pointer-events:none;
+    transition:opacity .4s;
+    text-align:center;padding:20px;
+  }
+  #finalMsg.show{opacity:1;pointer-events:all;}
+  #finalMsg h2{
+    font-size:clamp(24px,7vw,44px);color:var(--red-bright);
+    text-shadow:0 0 30px red;letter-spacing:3px;
+  }
+
+  .flash{
+    position:absolute;inset:0;background:#fff;z-index:9;
+    opacity:0;pointer-events:none;
+  }
+
+  #shake{width:100%;height:100%;}
+  .shakeAnim{animation:shakeKF .35s linear;}
+  @keyframes shakeKF{
+    0%{transform:translate(0,0);}
+    20%{transform:translate(-8px,4px);}
+    40%{transform:translate(7px,-6px);}
+    60%{transform:translate(-6px,-3px);}
+    80%{transform:translate(5px,5px);}
+    100%{transform:translate(0,0);}
+  }
+
+  footer{
+    position:fixed;bottom:6px;right:10px;
+    font-size:10px;color:#444;z-index:20;
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ================= START SCREEN ================= -->
+  <section class="screen active" id="startScreen">
+    <h1>SIE BEOBACHTET DICH</h1>
+    <p>Ein Kurz-Horror-Erlebnis im Stil von "Take This Lollipop".<br>
+    Dieses Spiel nutzt deine Kamera, um dich Teil der Geschichte zu machen.</p>
+    <div id="consentBox">
+      🔒 <strong>Transparenz-Hinweis:</strong> Dein Kamerabild wird <u>ausschließlich lokal in deinem Browser</u>
+      verarbeitet (Canvas/Video-Element). Es wird nichts aufgenommen, gespeichert oder irgendwohin gesendet.
+      Die "Daten werden gesammelt..."-Anzeige im Spiel ist inszeniert und rein fiktiv — es findet kein echtes
+      Auslesen von Kontakten, Standort oder Profildaten statt.
+    </div>
+    <button id="beginBtn">Kamera aktivieren &amp; beginnen</button>
+    <small>Nicht geeignet bei Herzproblemen, Epilepsie oder Angst vor Jumpscares.</small>
+  </section>
+
+  <!-- ================= PERMISSION SCREEN ================= -->
+  <section class="screen" id="permScreen">
+    <h1 style="font-size:28px;">Zugriff angefragt...</h1>
+    <p id="permText">Bitte erlaube den Kamerazugriff im Browser-Dialog.</p>
+  </section>
+
+  <!-- ================= ERROR SCREEN ================= -->
+  <section class="screen" id="errScreen">
+    <h1 style="font-size:26px;">Kein Zugriff möglich</h1>
+    <p id="errText">Ohne Kamera kann dieses Erlebnis leider nicht funktionieren.</p>
+    <button id="retryBtn">Erneut versuchen</button>
+  </section>
+
+  <!-- ================= GAME SCREEN ================= -->
+  <section class="screen" id="gameScreen">
+    <div id="camWrap">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="fx"></canvas>
+      <div id="noise"></div>
+      <div id="scanlines"></div>
+      <div id="vignette"></div>
+
+      <div id="hudTop">
+        <div><span class="dot"></span>REC ● LIVE</div>
+        <div id="clock">00:00:00</div>
+      </div>
+
+      <div id="meterWrap">
+        <div id="meterLabel">NÄHE</div>
+        <div id="meterBar"><div id="meterFill"></div></div>
+      </div>
+
+      <div id="dataPanel">
+        <h3>Analysiere Ziel</h3>
+        <div id="dataLines"></div>
+      </div>
+
+      <div id="status">Initialisiere...</div>
+
+      <div class="flash" id="flash"></div>
+    </div>
+
+    <div id="finalMsg">
+      <h2 id="finalTitle">SIE HAT DICH GEFUNDEN</h2>
+      <p id="finalSub">Take This Lollipop — Hommage · rein fiktives Erlebnis</p>
+      <button id="restartBtn">Neu starten</button>
+    </div>
+  </section>
+
+</div>
+
+<footer>Fan-Hommage · kein echtes Data-Scraping</footer>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const screens = {
+    start: $('startScreen'),
+    perm: $('permScreen'),
+    err: $('errScreen'),
+    game: $('gameScreen'),
+  };
+  function showScreen(name){
+    Object.values(screens).forEach(s=>s.classList.remove('active'));
+    screens[name].classList.add('active');
+  }
+
+  const video = $('video');
+  const fx = $('fx');
+  const ctx = fx.getContext('2d');
+  const status = $('status');
+  const dataPanel = $('dataPanel');
+  const dataLines = $('dataLines');
+  const meterFill = $('meterFill');
+  const noise = $('noise');
+  const flash = $('flash');
+  const finalMsg = $('finalMsg');
+  const clock = $('clock');
+  const camWrap = $('camWrap');
+
+  let stream = null;
+  let startTime = null;
+  let clockInterval = null;
+  let ended = false;
+
+  // ---------- START BUTTON ----------
+  $('beginBtn').addEventListener('click', requestCamera);
+  $('retryBtn').addEventListener('click', requestCamera);
+  $('restartBtn').addEventListener('click', () => location.reload());
+
+  async function requestCamera(){
+    showScreen('perm');
+    try{
+      stream = await navigator.mediaDevices.getUserMedia({
+        video:{ facingMode:'user', width:{ideal:640}, height:{ideal:480} },
+        audio:false
+      });
+      video.srcObject = stream;
+      await video.play();
+      startGame();
+    }catch(e){
+      $('errText').textContent = 'Zugriff verweigert oder keine Kamera gefunden. ('+ (e.message||e.name) +')';
+      showScreen('err');
+    }
+  }
+
+  function resizeCanvas(){
+    fx.width = camWrap.clientWidth;
+    fx.height = camWrap.clientHeight;
+  }
+  window.addEventListener('resize', resizeCanvas);
+
+  // ---------- GAME SEQUENCE ----------
+  function startGame(){
+    showScreen('game');
+    resizeCanvas();
+    startTime = Date.now();
+    clockInterval = setInterval(updateClock, 1000);
+    status.textContent = 'Verbindung hergestellt...';
+
+    runSequence();
+    requestAnimationFrame(drawNoiseCanvas);
+  }
+
+  function updateClock(){
+    const s = Math.floor((Date.now()-startTime)/1000);
+    const hh = String(Math.floor(s/3600)).padStart(2,'0');
+    const mm = String(Math.floor((s%3600)/60)).padStart(2,'0');
+    const ss = String(s%60).padStart(2,'0');
+    clock.textContent = `${hh}:${mm}:${ss}`;
+  }
+
+  function wait(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+  async function typeLines(lines){
+    dataLines.innerHTML = '';
+    for(const line of lines){
+      const row = document.createElement('div');
+      row.innerHTML = `<span class="lbl">${line.label}:</span> <span class="val"></span><span class="cursor">&nbsp;</span>`;
+      dataLines.appendChild(row);
+      const valSpan = row.querySelector('.val');
+      for(let i=0;i<=line.value.length;i++){
+        valSpan.textContent = line.value.slice(0,i);
+        await wait(18);
+      }
+      await wait(200);
+    }
+  }
+
+  function setMeter(pct){
+    meterFill.style.width = pct+'%';
+  }
+
+  function bigFlash(){
+    flash.style.transition = 'none';
+    flash.style.opacity = '0.9';
+    requestAnimationFrame(()=>{
+      flash.style.transition = 'opacity .5s ease';
+      flash.style.opacity = '0';
+    });
+  }
+
+  function shakeScreen(){
+    camWrap.classList.remove('shakeAnim');
+    void camWrap.offsetWidth;
+    camWrap.classList.add('shakeAnim');
+  }
+
+  function noiseSpike(duration=180){
+    noise.classList.add('noiseSpike');
+    setTimeout(()=>noise.classList.remove('noiseSpike'), duration);
+  }
+
+  // ghost face flash using drawn canvas shape (no external image needed)
+  function spawnGhostFace(){
+    const el = document.createElement('div');
+    el.className = 'ghostFace';
+    const size = Math.min(camWrap.clientWidth, camWrap.clientHeight) * (0.5 + Math.random()*0.3);
+    el.style.width = size+'px';
+    el.style.height = size+'px';
+    el.style.left = (Math.random()*70+15) + '%';
+    el.style.top = (Math.random()*60+15) + '%';
+    el.style.transform = 'translate(-50%,-50%)';
+    el.innerHTML = ghostSVG();
+    camWrap.appendChild(el);
+    requestAnimationFrame(()=>{
+      el.style.transition = 'opacity 60ms';
+      el.style.opacity = '0.9';
+      setTimeout(()=>{
+        el.style.transition = 'opacity 120ms';
+        el.style.opacity = '0';
+        setTimeout(()=>el.remove(), 200);
+      }, 90);
+    });
+  }
+
+  function ghostSVG(){
+    return `<svg viewBox="0 0 200 200" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="g" cx="50%" cy="40%" r="60%">
+          <stop offset="0%" stop-color="#fff"/>
+          <stop offset="60%" stop-color="#ddd"/>
+          <stop offset="100%" stop-color="#000"/>
+        </radialGradient>
+      </defs>
+      <ellipse cx="100" cy="95" rx="70" ry="90" fill="url(#g)" opacity="0.85"/>
+      <ellipse cx="72" cy="85" rx="12" ry="18" fill="#000"/>
+      <ellipse cx="128" cy="85" rx="12" ry="18" fill="#000"/>
+      <path d="M70 140 Q100 120 130 140 Q100 160 70 140 Z" fill="#000"/>
+    </svg>`;
+  }
+
+  // subtle canvas grain/glitch lines drawn continuously
+  function drawNoiseCanvas(){
+    if(ended) return;
+    ctx.clearRect(0,0,fx.width,fx.height);
+    if(Math.random() < 0.04){
+      // glitch slice
+      const y = Math.random()*fx.height;
+      const h = 4 + Math.random()*20;
+      ctx.fillStyle = 'rgba(255,0,0,0.08)';
+      ctx.fillRect(0,y,fx.width,h);
+    }
+    requestAnimationFrame(drawNoiseCanvas);
+  }
+
+  // ---------- MAIN TIMED SEQUENCE ----------
+  async function runSequence(){
+    await wait(1200);
+    status.textContent = 'Standort wird ermittelt...';
+    setMeter(8);
+    await wait(1800);
+
+    dataPanel.classList.add('show');
+    await typeLines([
+      {label:'IP-Trace', value:'92.xxx.xx.xx (simuliert)'},
+      {label:'Netzwerk', value:'lokal · unverschlüsselte Demo'},
+      {label:'Sichtung', value:'Kamera aktiv'},
+    ]);
+    status.textContent = 'Sie hat dich bemerkt.';
+    setMeter(24);
+    await wait(2200);
+
+    noiseSpike(150);
+    status.textContent = 'Verbindung instabil...';
+    await wait(1600);
+
+    dataPanel.classList.remove('show');
+    await wait(600);
+
+    status.textContent = '';
+    await wait(900);
+    noiseSpike(120);
+    shakeScreen();
+    await wait(1400);
+
+    status.textContent = 'Näher...';
+    setMeter(46);
+    await wait(2000);
+
+    // first small scare
+    noiseSpike(140);
+    spawnGhostFace();
+    shakeScreen();
+    await wait(2200);
+
+    status.textContent = 'Sie kennt dein Gesicht.';
+    setMeter(63);
+    dataPanel.classList.add('show');
+    await typeLines([
+      {label:'Muster', value:'erkannt'},
+      {label:'Distanz', value:'schließt sich'},
+    ]);
+    await wait(1200);
+    dataPanel.classList.remove('show');
+
+    await wait(1800);
+    status.textContent = 'Fast da...';
+    setMeter(82);
+    noiseSpike(160);
+    spawnGhostFace();
+    await wait(1200);
+    spawnGhostFace();
+    shakeScreen();
+    await wait(1600);
+
+    status.textContent = '';
+    setMeter(97);
+    await wait(1400);
+
+    // FINAL JUMPSCARE
+    finalScare();
+  }
+
+  function finalScare(){
+    ended = true;
+    bigFlash();
+    shakeScreen();
+    noiseSpike(500);
+    spawnGhostFace();
+    setTimeout(spawnGhostFace, 90);
+    setTimeout(spawnGhostFace, 180);
+
+    setTimeout(()=>{
+      finalMsg.classList.add('show');
+      clearInterval(clockInterval);
+      if(stream){
+        stream.getTracks().forEach(t=>t.stop());
+      }
+    }, 550);
+  }
+
+})();
+</script>
+</body>
+</html>
